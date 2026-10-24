@@ -1,0 +1,10 @@
+# What HyperDesk writes when it runs from a clone: conversations, Knowledge, files and logs stay out of git.
+__pycache__/
+*.pyc
+app/AgentOS/state/
+app/AgentOS/logs/
+app/AgentOS/knowledge/
+app/workspace/
+installed.txt
+*.bak
+*.log

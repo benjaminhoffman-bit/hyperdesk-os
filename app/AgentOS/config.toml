@@ -1,0 +1,49 @@
+# HyperDesk OS config (the shared build). One file; HyperDesk reads nothing else. Install.cmd writes your name below.
+
+[ollama]
+url = "http://127.0.0.1:11434"
+# Ollama model names HyperDesk may call. The installer makes all four from one starter model (gemma4:12b-it-qat, 16K).
+aliases = ["fast", "code", "daily", "vision"]
+# Candidates for the cheap local tier.
+local_tier = ["fast", "code"]
+# One model per local job: code sorts the questions, fast answers them. Both are the starter model at first.
+classify_model = "code"
+answer_model = "fast"
+
+[agents]
+# Implements level-2 and level-3 tasks. Only works once you install Claude Code and sign in to it (a Claude plan).
+implementer = "claude"
+# "opencode" implements on the free tier ([free]); its model, if you install opencode. See opencode.json.
+opencode_model = "omniroute/free"
+# Hard stop on claude -p plus codex exec calls per day. Ordinary individual use only.
+max_calls_per_day = 20
+
+[gpu]
+# Add a game's .exe name (e.g. "eldenring.exe") so local models wait while it runs: loading one mid-game can stutter it.
+games = []
+# The local tier is skipped unless this much VRAM is free. 0 lets Ollama share GPU and system memory (slower, works).
+min_free_vram_mib = 0
+
+[free]
+# Free cloud models: the tier between this PC and Claude. Groq's free tier works once its key (console.groq.com) is
+# saved in HyperDesk (Apps & APIs, Free cloud). For another OpenAI-compatible free tier, change url and model here.
+url = "https://api.groq.com/openai/v1"
+model = "openai/gpt-oss-120b"
+# false: only when you pick Free cloud. Free tiers may train on what they are sent, so nothing goes there by itself.
+auto = false
+
+[voice]
+# HyperDesk's mic buttons: faster-whisper on the CPU (no VRAM). small.en: ~1.2 s per clip once warm, accurate.
+# base.en is faster and less accurate; a model name without ".en" also detects the language. Downloads on first use.
+model = "small.en"
+
+[jobs]
+# HyperDesk's one box. Jobs run side by side in lanes: one GPU job at a time, this many cloud jobs, desk actions at once.
+cloud_parallel = 2
+# false: questions stay on this PC unless you pick Cloud. true: a deep question goes to Claude by itself (daily cap above).
+auto_cloud = false
+
+[share]
+# This section marks the shared build. ads: the small SilvaDes cards (built in, no network calls or storage). name: what HyperDesk calls you.
+ads = true
+name = ""

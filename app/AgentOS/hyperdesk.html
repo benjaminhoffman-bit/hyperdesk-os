@@ -1,0 +1,1619 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HyperDesk</title>
+<link rel="icon" href="/assets/hyperdesk.svg" type="image/svg+xml">
+<meta name="theme-color" content="#050505">
+<style>
+@font-face { font-family: "IBM Plex Sans"; src: url(/assets/fonts/IBMPlexSans.woff2) format("woff2"); font-weight: 100 700; font-display: swap }
+@font-face { font-family: "IBM Plex Mono"; src: url(/assets/fonts/IBMPlexMono-400.woff2) format("woff2"); font-weight: 400; font-display: swap }
+@font-face { font-family: "IBM Plex Mono"; src: url(/assets/fonts/IBMPlexMono-500.woff2) format("woff2"); font-weight: 500; font-display: swap }
+@font-face { font-family: Oxanium; src: url(/assets/fonts/Oxanium.woff2) format("woff2"); font-weight: 200 800; font-display: swap }
+:root {
+  /* the SILVADES brand system (silvades.com): void black, one neon, Oxanium for display, Plex Mono for labels */
+  --bg: #050505; --side: #0a0a0a; --raise: #121212; --raise2: #1a1a1a; --line: #222; --line2: #333;
+  --text: #e0e0e0; --muted: #9a9a9a; --faint: #858585;  /* faint: 4.7:1 on --raise2, the darkest it may go for small text */
+  --accent: #39ff14; --accent2: #2bcc10; --glow: 0 0 20px #39ff1440; --ink: #050505; --warn: #f2b84b; --bad: #ff6b6b; --ok: var(--accent);
+  --sans: "IBM Plex Sans", "Segoe UI", sans-serif; --mono: "IBM Plex Mono", Consolas, monospace; --disp: Oxanium, var(--sans);
+  --r: 4px; --col: 780px; --ease: .14s ease;
+  color-scheme: dark; font-family: var(--sans);
+}
+* { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: var(--line2) transparent }
+::selection { background: var(--accent); color: var(--ink) }
+[hidden] { display: none !important }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased }
+body { display: grid; grid-template-columns: 264px 1fr; height: 100vh; overflow: hidden; transition: grid-template-columns .18s ease }
+body.folded { grid-template-columns: 0 1fr }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; border-radius: 3px }
+button, input, select, textarea { transition: background-color var(--ease), color var(--ease), border-color var(--ease), box-shadow var(--ease) }
+button:disabled { opacity: .4; cursor: default }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+input, select, textarea { font: inherit; color: var(--text); background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: 7px 10px; min-width: 0 }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #39ff1480 }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none }
+.grow { flex: 1 } .muted { color: var(--muted) } .faint { color: var(--faint) } .small { font-size: 12.5px } .mono { font-family: var(--mono); font-size: 12.5px }
+.ok { color: var(--ok) } .warn { color: var(--warn) } .bad { color: var(--bad) }
+/* eyebrow labels, as on the site: small mono caps, tracked out */
+.label, .menu .hd, th, .meta, .acts button:not(.btn), .where, .tag { font: 500 10.5px/1.4 var(--mono); letter-spacing: 1.5px; text-transform: uppercase }
+
+/* sidebar */
+#side { background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; overflow: hidden }
+body.folded #side { border: 0; visibility: hidden }  /* out of the Tab order too, not only 0 px wide */
+.sidehead { display: flex; align-items: center; gap: 9px; padding: 20px 12px 20px 16px }
+.sidehead img { width: 22px; height: 22px }
+.wordmark { font: 700 14px/1 var(--disp); letter-spacing: 3px; text-transform: uppercase; color: var(--accent); text-shadow: 0 0 20px #39ff144d; white-space: nowrap }
+.row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 7px 10px; border-radius: 3px; text-align: left; color: var(--muted); white-space: nowrap }
+.row:hover { background: var(--raise); color: var(--text) }
+.row.on { background: var(--raise2); color: var(--text); box-shadow: inset 2px 0 var(--accent) }
+.row .k { margin-left: auto; font: 10.5px var(--mono); color: var(--faint) }
+.row .n { margin-left: auto; font: 600 10.5px/1.6 var(--mono); background: var(--warn); color: var(--ink); border-radius: 2px; padding: 0 6px }
+.sidebody { overflow-y: auto; padding: 0 8px; flex: 1 }
+.newrow { color: var(--text); margin: 2px 0 6px }
+.label { color: var(--muted); padding: 22px 10px 6px; font-size: 10px }
+.thread { position: relative }
+.thread .row { padding-right: 30px }
+.thread .row span { overflow: hidden; text-overflow: ellipsis }
+.thread .del { position: absolute; right: 4px; top: 5px; width: 26px; height: 26px; display: grid; opacity: 0; place-items: center; color: var(--faint) }
+.thread:hover .del, .thread .del:focus-visible { opacity: 1 } .thread .del:hover { color: var(--bad); background: var(--raise2) }
+.busydot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); flex: none; animation: blink 1.2s infinite }
+@keyframes blink { 50% { opacity: .25 } }
+.sidefoot { border-top: 1px solid var(--line); padding: 8px }
+
+/* main */
+/* column 2 always: on a narrow window the open sidebar is position: fixed, and main would otherwise take its 0 px column */
+main { grid-column: 2; display: flex; flex-direction: column; min-width: 0; height: 100vh; position: relative; background: radial-gradient(1100px 420px at 50% 120%, #39ff1412, transparent 62%) }
+.top { height: 50px; display: flex; align-items: center; gap: 8px; padding: 0 14px; flex: none; border-bottom: 1px solid var(--line); margin-bottom: 8px }
+.top .title { font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50vw; flex-shrink: 1000 }  /* gives way before any notice */
+.iconbtn { width: 34px; height: 34px; display: grid; place-items: center; color: var(--muted); flex: none }
+/* notices give way before the status pill and full-screen button do: a long one is clipped, never pushed off-screen */
+#attn { display: flex; gap: 4px; min-width: 0; overflow: hidden; padding: 4px; margin: -4px }  /* room for the focus ring inside the clip */ #attn .pill { flex: 0 1 auto; min-width: 0; overflow: hidden }
+.iconbtn:hover { background: var(--raise); color: var(--text) }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; color: var(--muted); font: 500 11.5px/1.4 var(--mono); flex: none; white-space: nowrap }
+.pill:hover { background: var(--raise); color: var(--text) }
+.pill.attn { color: var(--warn); background: #f2b84b14; box-shadow: inset 0 0 0 1px #f2b84b40 }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px #39ff1480; flex: none }
+.dot.warn { background: var(--warn) } .dot.bad { background: var(--bad) } .dot.off { background: var(--faint) }
+.dot.warn, .dot.bad, .dot.off { box-shadow: none }
+#scroll { flex: 1; overflow-y: auto }
+.col { max-width: var(--col); margin: 0 auto; padding: 8px 24px 0 }
+
+/* empty state: #view takes the scroll area's height so the greeting and composer sit centred, as designed */
+#view:has(> .hello) { height: 100% }
+.hello { min-height: 100%; display: flex; flex-direction: column; justify-content: center; padding-bottom: 12vh }
+.hello h1 { font: 600 34px/1.15 var(--disp); letter-spacing: 1px; margin: 0 0 10px }
+.hello h1 em { font-style: normal; color: var(--accent); text-shadow: var(--glow) }
+.hello p { margin: 0 0 22px; color: var(--muted) }
+.brief { margin-top: 18px; display: flex; flex-direction: column; gap: 2px }
+.brief button { display: flex; gap: 10px; align-items: baseline; text-align: left; padding: 5px 8px; color: var(--muted); font-size: 13px }
+.brief button:hover { background: var(--raise); color: var(--text) }
+.brief .dot { transform: translateY(-1px); width: 6px; height: 6px }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px }
+.chips button { border: 1px solid var(--line); padding: 7px 12px; color: var(--muted); font-size: 13px }
+.chips button:hover { border-color: var(--accent2); color: var(--text) }
+
+/* conversation */
+.turn { padding: 18px 0 6px; animation: rise .22s ease both }
+@keyframes rise { from { opacity: 0; transform: translateY(6px) } }
+.you { display: flex; justify-content: flex-end; margin-bottom: 14px }
+.you div { background: var(--raise); border: 1px solid var(--line); border-right: 2px solid var(--accent); padding: 10px 15px; border-radius: var(--r); max-width: 82%; white-space: pre-wrap; word-break: break-word; font-size: 15px; line-height: 1.55 }
+.job { margin: 0 0 18px }
+.meta { display: flex; align-items: center; gap: 7px; color: var(--faint); margin-bottom: 8px }
+.meta b { font-weight: 500; color: var(--muted) }
+.job.live .meta b { color: var(--accent) }
+.meta .why { cursor: help; border-bottom: 1px dotted var(--line2) }
+.md { font-size: 15px; line-height: 1.7; word-break: break-word }
+.md p { margin: 0 0 12px } .md p:last-child { margin-bottom: 0 }
+.md h3 { font: 600 16px/1.3 var(--disp); letter-spacing: .5px; margin: 20px 0 8px }
+.md ul, .md ol { margin: 0 0 12px; padding-left: 22px } .md li { margin: 3px 0 } .md li::marker { color: var(--accent) }
+.md code { font-family: var(--mono); font-size: 13px; background: var(--raise2); padding: 1px 5px; border-radius: 3px }
+.md pre { background: var(--side); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; overflow: auto; margin: 0 0 12px }
+.md pre code { background: none; padding: 0; font-size: 12.8px; line-height: 1.55 }
+.md a, .page a { color: var(--text); text-decoration: underline; text-decoration-color: #39ff1466; text-underline-offset: 3px; cursor: pointer; transition: text-decoration-color var(--ease) }
+.md a:hover, .page a:hover { text-decoration-color: var(--accent) }
+.md .cite { color: var(--accent); font-size: 11px; vertical-align: super; font-family: var(--mono) }
+.host { color: var(--faint); font-size: 12px }
+.thinking { color: var(--faint); font-size: 14px }
+.thinking::after { content: "…"; color: var(--accent); animation: blink 1.2s infinite }
+.sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px }
+.sources button { border: 1px solid var(--line); padding: 4px 9px; font-size: 12px; color: var(--muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.sources button:hover { color: var(--text); border-color: var(--accent2) }
+.imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px }
+.imgs img { width: 100%; border-radius: var(--r); display: block; cursor: zoom-in; background: var(--raise); transition: box-shadow var(--ease) }
+.imgs img:hover { box-shadow: 0 0 0 1px var(--accent2) }
+.log { font-family: var(--mono); font-size: 12px; color: var(--muted); background: var(--side); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; white-space: pre-wrap; max-height: 220px; overflow: auto }
+.acts { display: flex; gap: 2px; margin-top: 6px; opacity: 0; transition: opacity .12s }
+.job:hover .acts, .acts:focus-within, .job.live .acts { opacity: 1 }
+.acts button:not(.btn) { color: var(--faint); padding: 5px 8px }
+.acts button:not(.btn):hover { color: var(--accent); background: var(--raise) }
+.err { color: var(--bad); font-size: 13.5px }
+
+/* composer */
+.dock { flex: none; padding: 6px 24px 14px }
+.composer { max-width: var(--col); margin: 0 auto; background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 12px 12px 8px 16px; box-shadow: 0 10px 30px #000a; transition: border-color var(--ease) }
+.composer:focus-within { border-color: #39ff1480 }
+.composer textarea { width: 100%; background: none; border: 0; padding: 2px 0 6px; resize: none; font-size: 15.5px; line-height: 1.5; max-height: 40vh }
+.cbar { display: flex; align-items: center; gap: 4px }
+.where { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; color: var(--muted) }
+.where:hover { background: var(--raise2); color: var(--accent) }
+.preview { font-size: 12.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 6px }
+.preview b { color: var(--muted); font-weight: 500 }
+.send { width: 34px; height: 34px; background: var(--accent); color: var(--ink); display: grid; place-items: center; box-shadow: var(--glow) }
+.send:hover:not(:disabled) { background: var(--accent2); box-shadow: 0 0 30px #39ff1466 }
+.send:disabled { background: var(--raise2); color: var(--faint); opacity: 1; box-shadow: none }
+.send svg.i { stroke-width: 2.2 }
+.mic { width: 34px; height: 34px; display: grid; place-items: center; color: var(--muted) }
+.mic:hover { background: var(--raise2); color: var(--text) }
+.mic.rec { color: var(--bad); animation: blink 1s infinite } .mic.busy { color: var(--accent); animation: blink 1s infinite }
+.fine { max-width: var(--col); margin: 8px auto 0; text-align: center; font: 10.5px/1.4 var(--mono); letter-spacing: .3px; color: var(--faint) }
+.composer.drop { border-color: var(--accent); border-style: dashed }
+.att { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px } .att:empty { display: none }
+.youfiles { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-bottom: 6px }
+.chip { display: inline-flex; align-items: center; gap: 6px; max-width: 260px; padding: 4px 6px 4px 9px; border: 1px solid var(--line2); border-radius: 3px; font-size: 12.5px; color: var(--muted); background: var(--raise2) }
+.chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.chip button { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 2px; color: var(--faint) }
+.chip button:hover { color: var(--text); background: var(--line) }
+
+/* menus and popovers */
+.menu { position: fixed; z-index: 50; background: var(--raise); border: 1px solid var(--line2); border-radius: var(--r); padding: 6px; min-width: 240px; max-width: 340px; max-height: 70vh; overflow: auto; box-shadow: 0 16px 40px #000c; display: none }
+.menu.open { display: block; animation: pop .12s ease }
+@keyframes pop { from { opacity: 0; transform: translateY(4px) } }
+@keyframes fade { from { opacity: 0 } }
+.menu .mi { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; text-align: left; border-radius: 2px; font-size: 13.5px }
+.menu .mi:hover { background: var(--raise2) }
+.menu .mi small { margin-left: auto; color: var(--faint); font-size: 11.5px }
+.menu .sep { height: 1px; background: var(--line); margin: 6px 4px }
+.menu .hd { color: var(--faint); padding: 8px 10px 4px }
+.menu .tick { width: 14px; color: var(--accent) }
+.menu .block { padding: 6px 10px; font-size: 13px }
+
+/* pages behind the menu */
+.page { max-width: 1220px; margin: 0 auto; padding: 20px 32px 60px }
+.page h1 { font: 700 28px/1.2 var(--disp); letter-spacing: 1px; text-transform: uppercase; margin: 0 0 8px }
+.page h2 { font: 500 11px/1.4 var(--mono); letter-spacing: 2.2px; text-transform: uppercase; color: var(--accent); margin: 30px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px }
+.page .sub { color: var(--muted); margin: 0 0 14px; max-width: 760px }
+.btn { border: 1px solid var(--line2); border-radius: 3px; padding: 5px 12px; font: 600 11.5px/1.6 var(--disp); letter-spacing: 1.5px; text-transform: uppercase; color: var(--text); background: var(--raise); white-space: nowrap }
+.btn:hover { border-color: var(--accent2); color: var(--accent) }
+.btn.go { background: var(--accent); color: var(--ink); border-color: var(--accent); box-shadow: var(--glow) }
+.btn.go:hover { background: var(--accent2); border-color: var(--accent2); color: var(--ink); box-shadow: 0 0 30px #39ff1466 }
+.btn.danger { color: var(--bad) } .btn.danger:hover { border-color: var(--bad) }
+.btn.quiet { border-color: transparent; background: none; color: var(--muted) } .btn.quiet:hover { color: var(--accent); background: var(--raise) }
+.bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px }
+.seg { display: inline-flex; background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: 2px }
+.seg button { padding: 4px 11px; font: 500 10.5px/1.6 var(--mono); letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); border-radius: 2px }
+.seg button:hover { color: var(--text) }
+.seg button.on { background: var(--raise2); color: var(--accent) }
+.switch { position: relative; width: 44px; height: 24px; flex: none; border-radius: 12px; background: var(--raise2); box-shadow: inset 0 0 0 1px var(--line); transition: background .15s }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s }
+.switch.on { background: #39ff1426; box-shadow: inset 0 0 0 1px var(--accent) }
+.switch.on::after { transform: translateX(20px); background: var(--accent) }
+.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.meter { height: 8px; border-radius: 4px; background: var(--raise2); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; margin: 6px 0 4px }
+.meter > i { display: block; height: 100%; border-radius: 4px; background: var(--accent); transition: width .6s }
+.meter.idle > i { background: var(--faint) } .meter.due > i { background: var(--warn) }
+.meterrow { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted) }
+.meterrow b { color: var(--text); font-weight: 500 }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px }
+.steps span { font: 500 10.5px/1.6 var(--mono); letter-spacing: 1px; text-transform: uppercase; padding: 1px 7px; border-radius: 2px; color: var(--faint); box-shadow: inset 0 0 0 1px var(--line) }
+.steps span.done { color: var(--ok); box-shadow: inset 0 0 0 1px #39ff1440 }
+.steps span.now { color: var(--ink); background: var(--accent); animation: pulse 1.2s ease-in-out infinite }
+@keyframes pulse { 50% { opacity: .55 } }
+@media (prefers-reduced-motion: reduce) { .steps span.now { animation: none } .meter > i { transition: none } }
+table { width: 100%; border-collapse: collapse }
+th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 13.5px }
+th { color: var(--faint); font-size: 10.5px }
+tr.click { cursor: pointer } tr.click:hover td { background: var(--raise) }
+td.clip { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.list .item { display: flex; gap: 14px; align-items: center; padding: 11px 8px; border-bottom: 1px solid var(--line); transition: background-color var(--ease) }
+.list .item:hover { background: var(--side) }
+.list .item .t { font-weight: 500 } .list .item .s { color: var(--faint); font-size: 12.5px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.list .item .acts2 { display: flex; gap: 4px; opacity: .55; transition: opacity .12s } .list .item:hover .acts2, .list .item .acts2:focus-within { opacity: 1 }
+.tag { color: var(--muted); border: 1px solid var(--line); border-radius: 2px; padding: 1px 7px; white-space: nowrap }
+.tag.ok { color: var(--ok); border-color: #39ff1440 } .tag.warn { color: var(--warn); border-color: #f2b84b40 } .tag.bad { color: var(--bad); border-color: #ff6b6b40 }
+pre.box { background: var(--side); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; font: 12px/1.5 var(--mono); white-space: pre-wrap; overflow: auto; margin: 0; max-height: 360px; color: var(--muted) }
+.thumbs { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) }
+.thumbs button { padding: 0; aspect-ratio: 1; overflow: hidden; border-radius: 3px; background: var(--raise) }
+.thumbs button:hover { box-shadow: 0 0 0 1px var(--accent2) }
+.thumbs img { width: 100%; height: 100%; object-fit: cover; display: block }
+.form { display: grid; grid-template-columns: 120px 1fr; gap: 10px 12px; align-items: center }
+details > summary { cursor: pointer; color: var(--muted); font-size: 13px; margin: 6px 0 }
+details > summary:hover { color: var(--text) }
+
+/* dialogs, toasts */
+.overlay { position: fixed; inset: 0; background: #000c; display: none; align-items: flex-start; justify-content: center; padding-top: 10vh; z-index: 60 }
+.overlay.open { display: flex; animation: fade .12s ease }
+.overlay.open .dialog { animation: pop .14s ease }
+.dialog { background: var(--raise); border: 1px solid var(--line2); border-radius: var(--r); width: min(760px, 92vw); max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 24px 60px #000c }
+.dialog .dh { padding: 14px 18px; font: 600 15px/1.3 var(--disp); letter-spacing: .5px; display: flex; align-items: center; gap: 10px }
+.dialog .db { padding: 0 18px 14px; overflow: auto } .dialog .df { padding: 12px 18px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; align-items: center }
+#approve .dialog { border-color: #f2b84b66 }
+#approve .what { font-size: 18px; font-weight: 500; color: var(--warn); margin: 6px 0 12px }
+#pal .dialog { width: min(620px, 92vw) }
+#pal input { width: 100%; font-size: 15px; padding: 15px 18px; border: 0; border-bottom: 1px solid var(--line); border-radius: var(--r) var(--r) 0 0; background: none }
+#pal .list { overflow: auto; padding: 6px }
+#pal .it { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: 2px; cursor: pointer; font-size: 13.5px }
+#pal .it.on { background: var(--raise2); box-shadow: inset 2px 0 var(--accent) } #pal .it span:last-child { color: var(--faint); font: 10.5px/1.9 var(--mono); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap }
+.toasts { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 70; align-items: center; pointer-events: none }
+.toast { background: var(--raise2); border: 1px solid var(--line2); border-left: 2px solid var(--accent); padding: 9px 14px; border-radius: 3px; font-size: 13px; box-shadow: 0 10px 30px #000c; max-width: 560px; white-space: pre-wrap; animation: pop .15s ease }
+.toast.err { border-color: #ff6b6b66; border-left-color: var(--bad) }
+.gone { position: fixed; inset: 0; background: #000e; display: none; place-items: center; z-index: 80; text-align: center }
+.gone.open { display: grid; animation: fade .2s ease }
+.gone b { font: 700 16px/2 var(--disp); letter-spacing: 2px; text-transform: uppercase }
+/* Quiet studio workspace: readable sections, useful numbers, one accent. */
+.pagehead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--line) }
+.pagehead p { margin: 0; color: var(--muted); max-width: 680px }
+.pagehead + h2, .pagehead + .access-panel { margin-top: 0 }
+.eyebrow { font: 500 10px var(--mono); letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px }
+.surface { border: 1px solid var(--line); background: var(--side); border-radius: var(--r); padding: 20px; min-width: 0 }
+.surface h3 { font: 600 17px var(--disp); margin: 0 0 8px }
+.surface p { color: var(--muted); margin: 6px 0 16px }
+.sectionhead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; justify-content: space-between; margin: 28px 0 12px }
+.sectionhead h2 { border: 0; padding: 0; margin: 0; color: var(--text); font: 600 18px var(--disp); letter-spacing: .3px; text-transform: none }
+.sectionhead p { margin: 0; color: var(--muted); font-size: 12px }
+.studio-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(240px, 1fr); gap: 20px; align-items: start }
+.recording-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) }
+.recording-grid .field input:not([type=checkbox]), .recording-grid .field select { width: 100%; min-width: 0 }
+.workflow-step { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font: 600 15px var(--disp) }
+.workflow-step b { font: 11px var(--mono); color: var(--accent); border: 1px solid var(--line2); width: 26px; height: 26px; display: grid; place-items: center }
+.field { margin: 0 0 18px }.field > label { display: block; margin-bottom: 7px; font-weight: 500 }
+.field textarea { width: 100%; resize: vertical }.field .seg { display: flex; flex-wrap: wrap }.field .seg button { flex: 1; padding: 8px }
+.help { font-size: 12px; color: var(--muted); line-height: 1.55; margin: 7px 0 0 }
+.filepick { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px dashed var(--line2); margin-bottom: 22px }
+.filepick span { overflow-wrap: anywhere; min-width: 0 }
+.metricstrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); margin: 16px 0 20px; background: var(--side) }
+.metric { padding: 18px 20px; min-width: 0; border-right: 1px solid var(--line) }.metric:last-child { border: 0 }
+.metric .name { color: var(--muted); font-size: 12px }.metric strong { display: block; margin: 5px 0; font: 600 29px/1.2 var(--disp); letter-spacing: -.5px; font-variant-numeric: tabular-nums }
+.metric small { color: var(--muted); font-size: 11px; display: block }
+.atabs { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 2px; background: var(--bg); border-bottom: 1px solid var(--line); margin-top: 18px; padding-top: 6px }
+.atabs button { padding: 10px 14px 9px; font: 500 11px/1.4 var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid transparent; border-radius: 0; white-space: nowrap }
+.atabs button:hover { color: var(--text) }.atabs button.on { color: var(--accent); border-bottom-color: var(--accent) }
+.tabnote { color: var(--muted); margin: 14px 0 6px; font-size: 13px }
+.analytics-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px }
+.analytics-tools input { flex: 1; min-width: 160px }.analytics-tools select { max-width: 240px }
+.tablewrap { overflow: auto; border: 1px solid var(--line); border-radius: 3px }
+.video-table { min-width: 760px }.video-table th { white-space: nowrap; background: var(--side); letter-spacing: .8px }
+.video-table td { vertical-align: middle; font-variant-numeric: tabular-nums }.video-table .num { text-align: right; white-space: nowrap }
+.video-title { max-width: 350px; white-space: normal; font-weight: 500 }.video-title button { padding: 0; text-align: left; font-weight: 500 }.video-title button:hover { color: var(--accent) }
+.video-title small { display: block; color: var(--muted); font-size: 11px; margin-top: 5px; font-weight: 400 }
+.rank { color: var(--faint); font: 11px var(--mono); width: 28px }.viewbar { margin-top: 6px; height: 3px; background: var(--raise2); min-width: 60px }.viewbar i { display: block; height: 100%; background: var(--accent2) }
+.empty { border: 1px dashed var(--line2); padding: 28px; text-align: center; color: var(--muted) }.empty b { display: block; color: var(--text); margin-bottom: 6px }
+.disclosure { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 14px }.disclosure > summary { cursor: pointer; color: var(--muted); padding: 4px 0; font-size: 13px }.disclosure[open] > summary { margin-bottom: 16px }
+.channel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px }.channel-grid strong { font: 600 24px var(--disp); display: block; margin-top: 10px }
+.ubars { display: flex; align-items: flex-end; gap: 6px; height: 190px; margin: 8px 0 26px; padding-top: 16px; border-bottom: 1px solid var(--line2) }
+.ucol { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative }
+.ucol b { font: 500 9px var(--mono); color: var(--muted); margin-bottom: 3px; white-space: nowrap }
+.ucol span { position: absolute; top: 100%; margin-top: 5px; font: 9px var(--mono); color: var(--faint) }
+.ustack { width: 100%; max-width: 44px; min-height: 1px; display: flex; flex-direction: column-reverse; border-radius: 2px 2px 0 0; overflow: hidden }
+.ustack i { display: block; min-height: 0 } .ucol:hover .ustack { filter: brightness(1.25) }
+.ulegend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-bottom: 14px }
+.ulegend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px }
+.chart { width: 100%; height: 100px; display: block; overflow: visible; margin: 12px 0 8px }.chart rect { fill: var(--accent2) }.chart .axis { stroke: var(--line2) }.chart text { fill: var(--muted); font: 9px var(--mono) }
+.note { border-left: 2px solid var(--line2); padding: 8px 12px; color: var(--muted); font-size: 12px; margin: 12px 0 }
+.projectcard { border-bottom: 1px solid var(--line); padding: 16px 0 }.projectcard:first-child { padding-top: 0 }.projectcard .bar { margin-bottom: 6px }.projectcard h3 { margin: 0; font-size: 15px; overflow-wrap: anywhere }
+@media (max-width: 1050px) { .studio-grid { grid-template-columns: 1fr }.metric { padding: 14px }.metric strong { font-size: 24px } }
+@media (max-width: 600px) { .metricstrip { grid-template-columns: repeat(2, minmax(0, 1fr)) }.metric:nth-child(2) { border-right: 0 }.metric:nth-child(-n+2) { border-bottom: 1px solid var(--line) }.pagehead h1 { font-size: 24px }.surface { padding: 16px }.analytics-tools select { max-width: 100%; width: 100% } }
+@media (max-width: 820px) {
+  body { grid-template-columns: 0 1fr } body:not(.folded) #side { position: fixed; inset: 0 auto 0 0; width: 264px; z-index: 40; box-shadow: 0 0 40px #000c }
+  .col, .page { padding-left: 16px; padding-right: 16px } .dock { padding: 6px 12px 12px }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
+.access-panel { background: linear-gradient(110deg,#111a0e,var(--raise) 65%); border: 1px solid #39ff1433; padding: 26px; margin: 24px 0; border-radius: var(--r) }
+.access-panel h2 { margin: 7px 0 8px; font-family: var(--disp); font-size: 24px }
+#mtable, #tlist { overflow-x: auto } #tlist td:first-child { white-space: nowrap } #mtable td:first-child { max-width: 300px; overflow-wrap: anywhere }
+.access-switch,.vision-option { display: flex; align-items: center; gap: 24px; justify-content: space-between; padding: 18px 0; border-top: 1px solid var(--line2); cursor: pointer }
+.access-switch strong,.vision-option strong { display: block; font-size: 15px }
+.access-switch small,.vision-option small { display: block; color: var(--muted); margin-top: 5px; max-width: 640px }
+.access-switch input,.vision-option input { appearance: none; flex: 0 0 46px; width: 46px; height: 26px; border-radius: 20px; padding: 0; background: #2b2b2b; position: relative; cursor: pointer }
+.access-switch input::after,.vision-option input::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #b5b5b5; top: 3px; left: 3px; transition: transform .15s }
+.access-switch input:checked,.vision-option input:checked { background: #39ff1428; border-color: var(--accent) }
+.access-switch input:checked::after,.vision-option input:checked::after { transform: translateX(20px); background: var(--accent) }
+.vision-option { border: 1px solid #39ff1433; background: #39ff1407; padding: 16px; margin-top: 20px }
+.vision-option .tag { display: inline-block; margin-top: 10px }
+.web-pill { border: 1px solid var(--line2); border-radius: 20px; font: 11px var(--mono); padding: 6px 10px; white-space: nowrap; color: var(--muted) }
+.web-pill[aria-checked=true] { border-color: #39ff1455; color: var(--accent); background: #39ff140b }
+.visual-review { margin: 18px 0; border-top: 1px solid var(--line2); padding-top: 14px }
+.visual-review summary { cursor: pointer; font-family: var(--disp); font-size: 17px }
+.evidence-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 14px; margin-top: 16px; max-height: 620px; overflow-y: auto }
+.evidence-card { border: 1px solid var(--line2); background: var(--raise); border-radius: var(--r); overflow: hidden }
+.evidence-card img { width: 100%; aspect-ratio: 16/9; object-fit: contain; background: black; display: block }
+.evidence-card>div { padding: 14px }.evidence-card .tag { display: inline-block; margin: 8px 0 0 }.evidence-card p { margin: 10px 0 }
+@media(max-width:700px) { .access-panel { padding: 18px }.web-pill { font-size: 9px; padding: 5px 7px }.access-switch,.vision-option { gap: 12px } }
+@media(prefers-reduced-motion:reduce) { .access-switch input::after,.vision-option input::after { transition: none } }
+</style>
+</head>
+<body>
+<aside id="side" aria-label="Sidebar">
+  <div class="sidehead"><img src="/assets/hyperdesk.svg" alt=""><span class="wordmark">HyperDesk</span><span class="grow"></span>
+    <button class="iconbtn" data-js="fold" title="Hide sidebar" aria-label="Hide sidebar"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
+  <div class="sidebody">
+    <button class="row newrow" data-js="new"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New conversation<span class="k">Ctrl Shift O</span></button>
+    <button class="row" data-js="palette"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.8-3.8"/></svg>Search<span class="k">Ctrl K</span></button>
+    <div id="tools"></div>
+    <div class="label">Recent</div>
+    <div id="threads"></div>
+  </div>
+  <div id="sdside"></div>
+  <div class="sidefoot"><button class="row" id="sidestatus" data-js="status"><span class="dot off"></span><span>Checking…</span></button></div>
+</aside>
+<main>
+  <div class="top">
+    <button class="iconbtn" id="unfold" data-js="fold" title="Show sidebar" aria-label="Show sidebar" hidden><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
+    <span class="title" id="title"></span><span class="grow"></span>
+    <button class="pill" id="wrapbtn" data-js="wrapup" title="Draft a handoff and things to remember from this conversation (nothing is kept until you save)" hidden>Wrap up</button>
+    <span id="attn"></span>
+    <button class="pill" id="statusbtn" data-js="status" title="Status"><span class="dot off"></span><span></span></button>
+    <button class="iconbtn" data-js="fullscreen" title="Full screen" aria-label="Full screen"><svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
+  <div id="scroll"><div id="view"></div></div>
+  <div class="dock" id="dock">
+    <div class="composer">
+      <div class="att" id="att"></div>
+      <textarea id="ask" rows="1" placeholder="Ask, research, draw, fix, open…" aria-label="Message"></textarea>
+      <div class="cbar">
+        <button class="where" id="where" data-js="wheremenu" title="Where it runs"><span id="wherelabel">Auto</span><svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="web-pill" id="webstate" data-js="localwebtoggle" role="switch" aria-checked="false" title="Public web research for local models; unrestricted models are enabled separately in Models">Local web · off</button>
+        <span class="preview" id="preview"></span><span class="grow"></span>
+        <button class="mic" data-js="attachmenu" title="Attach files or a folder (or drop them here, or paste a screenshot)" aria-label="Attach"><svg class="i" viewBox="0 0 24 24"><path d="m20.5 11.5-8.3 8.3a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/></svg></button>
+        <button class="mic" data-js="mic" data-target="#ask" title="Speak (transcribed on this PC)" aria-label="Voice input"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
+        <button class="send" id="send" data-js="send" aria-label="Send" disabled><svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+      </div>
+    </div>
+    <div class="fine" id="fine">Choose Auto for everyday requests, Local team for a second opinion, or Improve HyperDesk to change the app.</div>
+  </div>
+</main>
+<div class="menu" id="menu" role="menu"></div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<div class="overlay" id="pal"><div class="dialog"><input id="palq" placeholder="Search conversations, pages and commands" autocomplete="off" aria-label="Search"><div class="list" id="pall"></div></div></div>
+<div class="overlay" id="modal"><div class="dialog"><div class="dh" id="mh"></div><div class="db" id="mb"></div><div class="df" id="mf"></div></div></div>
+<div class="overlay" id="approve" role="alertdialog" aria-labelledby="ah"><div class="dialog"><div class="dh" id="ah"><span class="dot warn"></span>The research agent asks first</div><div class="db" id="ab"></div><div class="df" id="af"></div></div></div>
+<div class="gone" id="gone"><div><b>HyperDesk stopped.</b><br><span class="muted">Close this window and start HyperDesk again from its shortcut.</span></div></div>
+
+<script src="/assets/silvades.js"></script>
+<script>
+"use strict";
+// the launch token arrives in the address (#token) and leaves it at once: a srcdoc frame (the Analytics dashboard) takes this page's
+// full address as its base URL, so a token left there would be readable inside the frame. The tab keeps a copy for F5.
+const T = (() => {
+  let t = location.hash.slice(1);
+  try {
+    if (t) sessionStorage.setItem("hd-token", t); else t = sessionStorage.getItem("hd-token") || "";
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  } catch {}
+  return t;
+})();
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const attrs = o => Object.entries(o).map(([k, v]) => ` data-${k}="${esc(v)}"`).join("");
+const btn = (label, o, cls = "btn") => `<button class="${cls}"${attrs(o)}>${label}</button>`;
+// for what the 4 s poll redraws: an unchanged list keeps its elements, so hover, focus and a click in progress survive
+const put = (el, html) => { if (el && el._html !== html) el.innerHTML = el._html = html; };
+const gb = b => (b / 2 ** 30).toFixed(1);
+const ago = t => { const s = Date.now() / 1000 - t; return s < 90 ? "just now" : s < 5400 ? Math.round(s / 60) + " min ago" : s < 129600 ? Math.round(s / 3600) + " h ago" : Math.round(s / 86400) + " days ago"; };
+const num = n => n >= 1e12 ? (n / 1e12).toFixed(2) + "T" : n >= 1e9 ? (n / 1e9).toFixed(2) + "B" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? Math.round(n / 1e3) + "K" : String(Math.round(n ?? 0));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const host = u => { try { return new URL(u).host; } catch { return "?"; } };
+const I = {  // icons, one stroke style
+  projects: '<path d="M3 7.5h6l2 2h10V19H3z"/>',
+  tasks: '<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',
+  images: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
+  models: '<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
+  apps: '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>',
+  activity: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  analytics: '<path d="M3 20h18M6 16v-4M11 16V8M16 16v-6M20 16V5"/>',
+  sites: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M6 11h3l2-3 2 5 2-2h3"/>',
+  system: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  answer: '<path d="M4 5h16v11H9l-5 4z"/>', research: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
+  video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10.5 5-3v9l-5-3z"/>',
+  code: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/>', open: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>', check: '<path d="m5 12 5 5 9-10"/>',
+  knowledge: '<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
+  clip: '<path d="m20.5 11.5-8.3 8.3a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/>',
+};
+I.file = I.knowledge;
+const icon = (n, style = "") => `<svg class="i" viewBox="0 0 24 24"${style ? ` style="${style}"` : ""}>${I[n] || ""}</svg>`;
+
+async function api(path, body) {
+  const r = await fetch("/api/" + path, {method: body ? "POST" : "GET", headers: {"X-Token": T, "Content-Type": "application/json"}, body: body && JSON.stringify(body)});
+  const j = await r.json().catch(() => ({error: "HTTP " + r.status}));
+  if (!r.ok) throw new Error(j.error || j.message || "HTTP " + r.status);
+  return j;
+}
+function toast(text, err) {
+  const d = document.createElement("div");
+  d.className = "toast" + (err ? " err" : "");
+  d.textContent = text;
+  $("#toasts").append(d);
+  setTimeout(() => d.remove(), err ? 8000 : 4000);
+}
+async function act(payload, quiet) {  // true when the server accepted it, so callers keep typed text on a refusal
+  try {
+    const r = await api("action", payload);
+    if (["update", "update_check", "smoke", "bench", "merge", "rollback", "undo", "improve", "video.edit", "analytics.sync", "sites.check", "sites.sync"].includes(payload.do)) startLog();
+    if (!quiet) toast(r.message || "Done");
+    poll();
+    return true;
+  } catch (e) { toast(e.message, true); return false; }
+}
+
+// ---------- markdown: escape everything first, then add a small closed set of tags (no raw HTML ever passes)
+function md(src) {
+  const blocks = [];
+  let s = esc(String(src ?? "").replace(/\u0000/g, "")).replace(/```[^\n]*\n([\s\S]*?)(?:```|$)/g, (_, code) => { blocks.push(`<pre><code>${code.replace(/\n$/, "")}</code></pre>`); return `\u0000${blocks.length - 1}\u0000`; });
+  const kind = l => /^#{1,4} /.test(l) ? "h" : /^\s*[-*•] /.test(l) ? "ul" : /^\s*\d+[.)] /.test(l) ? "ol" : "p";
+  s = s.split(/\n{2,}/).map(par => {
+    const p = par.trim();
+    if (!p) return "";
+    if (/^\u0000\d+\u0000$/.test(p)) return p;
+    const groups = [];  // models mix a heading, a list and text without blank lines: each run of one kind is one block
+    for (const l of p.split("\n")) { const k = kind(l); if (k !== "h" && groups.at(-1)?.k === k) groups.at(-1).ls.push(l); else groups.push({k, ls: [l]}); }
+    return groups.map(({k, ls}) => k === "h" ? `<h3>${ls[0].replace(/^#+ /, "")}</h3>` : k === "p" ? `<p>${ls.join("<br>")}</p>`
+      : `<${k}${k === "ol" ? ` start="${parseInt(ls[0])}"` : ""}>${ls.map(l => `<li>${l.replace(/^\s*(?:[-*•]|\d+[.)]) /, "")}</li>`).join("")}</${k}>`).join("");
+  }).join("");
+  s = s.replace(/`([^`\n]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
+    // a link always shows where it goes; one level of brackets in it (Wikipedia's "Python_(language)") belongs to it
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/(?:[^()\s]|\([^()\s]*\))+)\)/g, (_, text, url) => {
+      // undo esc() for the two a valid address can hold; a raw " < > is never one, so none reaches Edge's command line
+      const u = url.replace(/&amp;/g, "&").replace(/&#39;/g, "'");
+      blocks.push(`<a${attrs({do: "browser.open", name: "Edge", url: u})} title="${esc(u)}">${text}</a><span class="host"> (${esc(host(u))})</span>`);
+      return `\u0000${blocks.length - 1}\u0000`;  // set aside: the citation pass below must not reach into its attributes
+    })
+    .replace(/\[(\d{1,2})\]/g, '<span class="cite">[$1]</span>');
+  return s.replace(/\u0000(\d+)\u0000/g, (_, i) => blocks[+i]);
+}
+
+// ---------- status (polled), shown quietly: a dot in the corner, words only when something needs Ben
+let S = null, fails = 0, polling = false;
+// what this PC lacks (a shared copy: no video editor, ComfyUI, git...); a status without these keys shows everything, as before.
+// Before the first status nothing optional shows: a shared PC would flash (and let a click open) its hidden pages.
+const hides = k => S ? !!S.hide?.includes(k) : true, hasFolder = f => !S?.folders || S.folders.includes(f);
+const health = name => (S?.health?.results || []).find(r => r[0] === name) || [name, "", "not checked yet", ""];
+async function poll() {
+  if (polling) return;  // a slow status call (tasklist, nvidia-smi) must not pile up behind the 4 s timer
+  polling = true;
+  try {
+    S = await api("status");
+    if (S.share) Object.assign(TOOLS, {video: "Quick edit", analytics: "Post trends"});  // the lite build's own two tools
+    fails = 0;
+    $("#gone").classList.remove("open");
+    renderStatus();
+    renderApproval();
+    const c = S.command;
+    if (c.running && (c.title !== lastCmd || !logActive)) startLog();  // a newly seen run: each run starts a fresh log file
+    lastCmd = c.title;
+    if (thread && !page && S.jobs.running + S.jobs.queued && !threadTimer) loadThread();
+    VIEWS[page]?.live?.();
+  } catch (e) { if (++fails >= 2) $("#gone").classList.add("open"); }
+  finally { polling = false; }
+}
+function renderStatus() {
+  if (!S) return;
+  const res = S.health.results, bad = res.filter(r => r[1] === "FAIL"), warn = res.filter(r => r[1] === "WARN");
+  const tone = bad.length || S.game ? "bad" : warn.length ? "warn" : "";
+  const text = S.game ? `Game running: ${S.game}` : bad.length ? `Problem: ${bad.map(r => r[0]).join(", ")}` : warn.length ? warn.map(r => r[0]).join(", ") : res.length ? "All systems OK" : "Checking…";
+  const gpu = S.gpu ? `${(S.gpu.free / 1024).toFixed(1)} GB GPU free` : "";
+  put($("#statusbtn"), `<span class="dot ${tone}"></span><span>${esc(tone ? text : gpu)}</span>`);
+  $("#statusbtn").title = `${text} · ${gpu} · cloud calls today ${S.calls}/${S.cap}`;
+  put($("#sidestatus"), `<span class="dot ${tone}"></span><span>${esc(text)}</span>`);
+  const attn = [];
+  if (S.approvals.length) attn.push(`<button class="pill attn" data-js="showapproval">The research agent asks you</button>`);
+  if (S.awaiting) attn.push(`<button class="pill attn" data-page="tasks">${S.awaiting} ready to apply</button>`);
+  if (S.command.running) attn.push(`<button class="pill" data-page="system"><span class="busydot"></span>${esc(S.command.title)}</button>`);
+  if (S.stale) attn.push('<span class="pill attn" title="HyperDesk is still running its code from before the update">Update applied: close HyperDesk and open it again</span>');
+  put($("#attn"), attn.join(""));
+  if (prefer !== "improve") $("#fine").textContent = S.share ? "Local models run on this PC." : `Local models run on this PC. Cloud answers use your Claude plan: ${S.calls} of ${S.cap} calls today.`;  // Improve's own note stays
+  $("[data-js=mic]").style.display = hides("voice") ? "none" : "";  // .mic is display:grid, which beats [hidden]
+  renderTools(); drawHello();
+  document.title = S.approvals.length ? "(!) HyperDesk: approval needed" : "HyperDesk";
+}
+function statusMenu(anchor) {
+  if (!S) return;
+  const res = S.health.results, issues = res.filter(r => r[1] !== "PASS");
+  const svc = Object.entries(S.services).map(([n, on]) => `<div class="mi" style="cursor:default"><span class="dot ${on ? "" : "off"}"></span>${esc(n)}<small>${on ? btn("Open", {do: "service.open", name: n}, "btn quiet") + btn("Stop", {do: "service.stop", name: n}, "btn quiet") : btn("Start", {do: "service.start", name: n}, "btn quiet")}</small></div>`).join("");
+  openMenu(anchor, `
+    <div class="hd">Health</div>
+    ${issues.length ? issues.map(r => `<button class="mi" data-page="system"><span class="dot ${r[1] === "FAIL" ? "bad" : "warn"}"></span>${esc(r[0])}<small>${esc(String(r[2]).slice(0, 40))}</small></button>`).join("") : `<button class="mi" data-page="system"><span class="dot ${res.length ? "" : "off"}"></span>${res.length ? `All ${res.length} checks pass` : "Not checked yet"}<small>details</small></button>`}
+    <div class="sep"></div><div class="hd">GPU</div>
+    <div class="block muted">${S.gpu ? `${esc(S.gpu.name)} · ${((S.gpu.total - S.gpu.free) / 1024).toFixed(1)} of ${(S.gpu.total / 1024).toFixed(0)} GB used` : "no reading"}${S.game ? `<br><span class="bad">Game running: ${esc(S.game)}. Local models are paused.</span>` : ""}</div>
+    ${S.loaded.map(m => `<div class="mi" style="cursor:default">${esc(m.name)}<small>${gb(m.vram)} GB ${btn("Unload", {do: "model.unload", name: m.name}, "btn quiet")}</small></div>`).join("")}
+    <div class="sep"></div><div class="hd">Services</div>${svc}
+    ${S.share ? "" : `<div class="sep"></div><div class="block muted">Cloud calls today: ${S.calls} of ${S.cap} · Claude ${health("claude")[1] === "PASS" ? "signed in" : "?"} · Codex ${health("codex")[1] === "PASS" ? "signed in" : "?"}</div>`}
+    <div class="sep"></div>
+    <button class="mi" data-do="models.unload">Unload all models</button>
+    <button class="mi bad" data-do="stop_all" data-confirm="${S.share ? "Stop all AI: Ollama, running jobs and HyperDesk itself? (before gaming)" : "Kill all AI: Ollama, Open WebUI, ComfyUI, OmniRoute, running jobs and HyperDesk itself? (before gaming)"}">Stop all AI (before gaming)</button>`);
+}
+
+// ---------- sidebar: tools behind it, then the conversations
+const ATABS = {  // the Analytics page's tabs: name, and what is on each (shown under the bar; Ctrl K searches it)
+  overview: ["Overview", "The week at a glance: total views, silvades.com and the shop, alerts, next moves and every account."],
+  trends: ["Trends", "What's moving now: new videos' early read, views gained in the last 24 hours, older posts picking up again."],
+  topics: ["Topics", "What works on each account: content types, hashtags and formats, YouTube searches, TikTok vs Instagram."],
+  videos: ["Videos", "Search and sort every video and see channel activity; below, the scorecard, the best day, time and length to post, and top posts."],
+  web: ["Website & shop", "silvades.com visits, shop revenue and orders, the bio-link funnel, traffic sources, landing pages, channels and devices."],
+  sources: ["Sync & sources", "Automatic sync on or off, each source's last sync, and the sync console."],
+};
+const TOOLS = {knowledge: "Knowledge", projects: "Projects", tasks: "Tasks", images: "Images", studio: "Record & clip", video: "Video editor", analytics: "Video & site analytics", sites: "Website monitor", models: "Models", apps: "Apps & APIs", activity: "AI usage & activity", system: "System"};
+function renderTools() {
+  $("#wrapbtn").hidden = !thread || !!page;  // every view change passes through here
+  const groups = [["Create & measure", ["studio", "video", "images", "analytics", "sites"]], ["Workspace", ["knowledge", "projects", "tasks"]], ["Manage", ["models", "apps", "activity", "system"]]]
+    .map(([label, keys]) => [label, keys.filter(k => !hides(k))]).filter(([, keys]) => keys.length);
+  put($("#tools"), groups.map(([label, keys]) => `<div class="label">${label}</div>` + keys.map(k => `<button class="row ${page === k ? "on" : ""}" data-page="${k}" ${page === k ? 'aria-current="page"' : ""}>${icon(k)}${TOOLS[k]}${k === "tasks" && S?.awaiting ? `<span class="n">${S.awaiting}</span>` : ""}</button>`).join("")).join(""));
+}
+let threadList = [];
+async function loadThreads() {
+  threadList = await api("threads").catch(() => threadList);
+  $("#threads").innerHTML = threadList.map(t => `<div class="thread"><button class="row ${t.id === thread && !page ? "on" : ""}" data-js="openthread" data-id="${esc(t.id)}" title="${esc(t.title)}">${t.busy ? '<span class="busydot"></span>' : ""}<span>${esc(t.title)}</span></button><button class="del" data-js="delthread" data-id="${esc(t.id)}" aria-label="Delete conversation" title="Delete">${icon("x", "width:14px;height:14px")}</button></div>`).join("")
+    || '<div class="faint small" style="padding:4px 10px">Nothing yet.</div>';
+}
+
+// ---------- the conversation: what Ben typed, then each job's result, live
+let thread = "", page = "", jobs = [], threadTimer = null, rendered = {};
+const KIND = {answer: "Answer", research: "Research", image: "Picture", code: "App or project change", studio: "Video edit", open: "Action", file: "Document"};
+const ROUTE = j => j.route === "answer:team" ? "Local team · this PC" : j.route === "answer:gemini" ? `${j.model} · Gemini API` : j.route === "answer:local" ? `${j.model} · this PC` : j.route === "answer:free" ? `${j.model} · free cloud` : j.route === "answer:cloud" ? "Claude" : j.route === "research" ? "web + Claude" : j.route === "image" ? "SDXL · this PC" : j.route === "code" ? "Agent OS" : j.route === "file" ? `${j.model} · this PC` : "";
+function newConversation() {
+  if (window.studioCanLeave && !window.studioCanLeave()) return;
+  stopMic();
+  thread = ""; page = ""; jobs = []; rendered = {};
+  clearTimeout(threadTimer); threadTimer = null;
+  $("#title").textContent = "";
+  $("#dock").hidden = false;
+  showHello();
+  loadThreads(); renderTools();
+  ask.focus();
+}
+function showHello() {
+  dockComposer();  // the composer must leave #view before #view is rewritten, or it is destroyed
+  const h = new Date().getHours();
+  $("#view").innerHTML = `<div class="col hello"><h1>${h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"}<span id="hname"></span><em>.</em></h1>
+    <p id="hsub"></p>
+    <div id="hellodock"></div><div class="brief" id="brief"></div>
+    <div class="chips" id="hchips"></div><div id="sdhello"></div></div>`;
+  $("#hellodock").append($(".composer")); $("#fine").hidden = true;  // on the empty page the composer sits in the middle
+  drawHello();
+  api("digest").then(d => {
+    if (!$("#brief")) return;
+    const pages = {activity: "activity", tasks: "tasks", research: "tasks", system: "system", projects: "projects", images: "images", models: "models"};
+    $("#brief").innerHTML = d.lines.filter(l => l.kind !== "info").slice(0, 6).map(l => `<button ${l.view.startsWith("thread:") ? `data-js="openthread" data-id="${esc(l.view.slice(7))}"` : `data-page="${esc(pages[l.view] || "")}"`}><span class="dot ${l.kind === "ok" ? "" : esc(l.kind)}"></span>${esc(l.text)}</button>`).join("");
+  }).catch(() => {});
+}
+// the empty page's parts that follow status: the name (blank until status comes, so no other PC flashes "Ben"), its tools, the house ads
+function drawHello() {
+  const name = S ? S.name ?? "Ben" : "";
+  put($("#hname"), name ? ", " + esc(name) : "");
+  put($("#hsub"), `What are you working on? Ask a question here, or ${S?.share ? "open Quick edit or Post trends" : hides("video") && hides("analytics") ? "pick a tool" : "open your video editor and performance reports"} from the sidebar.`);
+  put($("#hchips"), [["auto", "Ask anything"], ["team", "Get a local second opinion"], ["gemini", "Ask Gemini"], ["improve", "Improve HyperDesk"]].filter(([v]) => !hides(v)).map(([v, label]) => btn(label, {js: "startmode", v}, "")).join("") + (hides("studio") ? "" : btn("Record a video", {page: "studio"}, "")));
+  try { window.sdCards?.draw(!!S?.ads); } catch {}
+}
+function dockComposer() {
+  if ($("#dock").contains($(".composer"))) return;
+  const had = document.activeElement === ask;  // moving a focused textarea drops its focus
+  $("#dock").prepend($(".composer")); $("#fine").hidden = false;
+  if (had) ask.focus();
+}
+async function openThread(id) {
+  if (window.studioCanLeave && !window.studioCanLeave()) return;
+  stopMic();
+  thread = id; page = ""; rendered = {}; jobs = [];
+  $("#dock").hidden = false; dockComposer();
+  $("#view").innerHTML = '<div class="col" id="turns"></div><div style="height:28px"></div>';
+  renderTools();
+  await loadThread(true);
+  loadThreads();
+}
+async function loadThread(jump) {
+  clearTimeout(threadTimer); threadTimer = null;
+  if (!thread || page) return;
+  const want = thread, list = await api("thread?id=" + encodeURIComponent(thread)).catch(() => null);
+  if (!list || want !== thread || page) return;  // Ben moved on while it loaded
+  const scroller = $("#scroll"), atEnd = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 80;
+  const finished = list.filter(j => !["queued", "running"].includes(j.state) && ["queued", "running"].includes(jobs.find(x => x.id === j.id)?.state));
+  jobs = list;
+  $("#title").textContent = list[0]?.said || "";
+  renderTurns();
+  if (jump || atEnd) scroller.scrollTop = scroller.scrollHeight;
+  if (finished.length) { loadThreads(); poll(); }
+  if (list.some(j => ["queued", "running"].includes(j.state))) threadTimer = setTimeout(loadThread, 900);
+}
+function renderTurns() {
+  const box = $("#turns");
+  if (!box) return;
+  const batches = [];
+  for (const j of jobs) { if (!batches.length || batches.at(-1).id !== j.batch) batches.push({id: j.batch, said: j.said, attach: j.attach || [], jobs: []}); batches.at(-1).jobs.push(j); }
+  for (const b of batches) {
+    let turn = [...box.children].find(t => t.dataset.batch === b.id);
+    if (!turn) {
+      turn = document.createElement("div");
+      turn.className = "turn"; turn.dataset.batch = b.id;
+      turn.innerHTML = `${b.attach.length ? `<div class="youfiles">${b.attach.map(p => chip(p)).join("")}</div>` : ""}<div class="you"><div>${esc(b.said)}</div></div><div class="replies"></div>`;
+      box.append(turn);
+    }
+    const replies = turn.querySelector(".replies");
+    for (const j of b.jobs) {
+      const html = jobHtml(j);
+      if (rendered[j.id] === html) continue;  // only what changed is redrawn: selections and scroll stay put
+      rendered[j.id] = html;
+      let el = [...replies.children].find(x => x.dataset.job === j.id);
+      if (!el) { el = document.createElement("div"); el.dataset.job = j.id; replies.append(el); }
+      el.className = "job" + (["queued", "running"].includes(j.state) ? " live" : "");
+      el.innerHTML = html;
+    }
+  }
+}
+function jobHtml(j) {
+  const live = ["queued", "running"].includes(j.state);
+  const meta = `<div class="meta">${icon(j.kind, "width:15px;height:15px")}<b>${esc(KIND[j.kind] || j.kind)}</b>${ROUTE(j) ? `<span>·</span><span class="why" title="${esc(j.why)}">${esc(ROUTE(j))}</span>` : ""}<span>${j.state === "queued" ? "· waiting for a free lane" : j.seconds ? `· ${esc(j.seconds)} s` : ""}</span></div>`;
+  let body = "";
+  if (j.kind === "answer" || j.kind === "file") body = j.output ? `<div class="md">${md(j.output)}</div>` : live ? '<div class="thinking">Thinking</div>' : "";
+  else if (j.kind === "research") {
+    if (live) body = `<div class="thinking">Searching and reading</div>`;
+    else {
+      const src = [], text = [];
+      for (const l of j.output.split("\n")) { const m = l.match(/^\[(\d+)\] (.*): (https?:\/\/\S+)$/); if (m) src.push(m); else text.push(l); }
+      body = `<div class="md">${md(text.join("\n"))}</div>` + (src.length ? `<div class="sources">${src.map(m => btn(`${esc(m[1])}. ${esc(m[2] || m[3])} <span class="host">${esc(host(m[3]))}</span>`, {do: "browser.open", name: "Edge", url: m[3]}, "")).join("")}</div>` : "");
+    }
+  } else if (j.kind === "image") {
+    body = j.files.length ? `<div class="imgs">${j.files.map(n => `<img alt="${esc(j.text)}" loading="lazy" data-js="zoom" data-name="${esc(n)}" src="/api/image/file?name=${encodeURIComponent(n)}&t=${T}">`).join("")}</div>`
+      : live ? `<div class="thinking">${j.output ? esc(j.output) : "Starting the image engine"}</div>` : "";
+  } else if (j.kind === "code") {
+    const waiting = j.task_state === "AWAITING_APPROVAL";  // the task's state now: after a merge the buttons go
+    const tail = j.output.split("\n").filter(l => l.trim()).slice(waiting ? -8 : -6).join("\n");
+    body = (tail ? `<div class="log">${esc(tail)}</div>` : live ? '<div class="thinking">Preparing the task</div>' : "")
+      + (waiting && j.task ? `<div class="acts" style="opacity:1;margin-top:8px">${btn("Apply update", {do: "merge", id: j.task, confirm: `Apply this tested change? For changes to HyperDesk, close and reopen the app afterward to use the update.`}, "btn go")}${btn("Discard proposal", {do: "rollback", id: j.task, confirm: `Discard this proposed change? Your current app stays as it is.`}, "btn quiet")}${btn("Details", {js: "inspect", id: j.task}, "btn quiet")}</div>` : "");
+  } else if (j.kind === "open" || j.kind === "studio") body = j.output ? `<div class="muted">${icon("check", "width:15px;height:15px;vertical-align:-3px;color:var(--ok)")} ${esc(j.output)}</div>`
+    : live && j.kind === "studio" ? '<div class="thinking">Editing your recording</div>' : "";
+  const err = j.error ? `<div class="err">${esc(j.error)}</div>` : j.state === "interrupted" ? '<div class="err">Stopped when HyperDesk closed.</div>' : j.state === "cancelled" ? '<div class="faint small">Stopped.</div>' : "";
+  const acts = [live ? btn("Stop", {js: "jobcancel", id: j.id}, "") : "",
+    !live && j.kind === "answer" && j.output ? btn("Copy", {js: "copy", id: j.id}, "") : "",
+    !live && j.kind === "file" && j.state === "done" ? btn("Open folder", {do: "folder.open", name: "files"}, "") : "",
+    !live && j.kind === "answer" && (j.route === "answer:cloud" || !hides("claude")) ? btn(j.route === "answer:cloud" ? "Ask on this PC" : "Ask Claude", {js: "again", id: j.id, prefer: j.route === "answer:cloud" ? "local" : "cloud"}, "") : "",
+    // free cloud never gets a conversation that had files (the server refuses it), so it is not offered there
+    !live && j.kind === "answer" && j.route !== "answer:free" && S?.free && !S.free.why && !jobs.some(x => x.attach?.length) ? btn("Ask free cloud", {js: "again", id: j.id, prefer: "free"}, "") : "",
+    !live && (j.error || j.state === "interrupted") && !["answer", "studio"].includes(j.kind) ? btn("Try again", {js: "again", id: j.id, prefer: "auto"}, "") : "",
+    j.task && j.kind !== "code" ? btn("Details", {js: "inspect", id: j.task}, "") : ""].filter(Boolean).join("");
+  return meta + body + err + (acts ? `<div class="acts">${acts}</div>` : "");
+}
+
+// ---------- composer: Enter sends, the line under it says where it will go before you send
+let prefer = "auto", previewTimer = null, previewSeq = 0;
+const ask = $("#ask");
+function fitAsk() { ask.style.height = "auto"; ask.style.height = Math.min(ask.scrollHeight, innerHeight * .4) + "px"; $("#send").disabled = !ask.value.trim(); }
+ask.addEventListener("input", () => { fitAsk(); clearTimeout(previewTimer); previewTimer = setTimeout(preview, 350); });
+ask.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
+async function preview() {
+  const text = ask.value.trim();
+  if (!text) { $("#preview").textContent = ""; return; }
+  const seq = ++previewSeq;
+  try {
+    const items = await api("plan", {text, prefer, files: attached, thread: page ? undefined : thread || undefined});
+    if (seq !== previewSeq || ask.value.trim() !== text) return;  // a newer preview (new text or new picker) won
+    $("#preview").innerHTML = "→ " + items.map(i => `<b>${esc(KIND[i.kind])}</b>${ROUTE(i) ? " · " + esc(ROUTE(i)) : ""}`).join("  +  ");
+    $("#preview").title = items.map(i => i.why).join("\n");
+  } catch (e) { if (seq === previewSeq) $("#preview").innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
+}
+let sending = false;
+async function send(text, into = page ? "" : thread) {  // from a page, a message starts a new conversation
+  text = (text ?? ask.value).trim();
+  if (!text || sending) return;  // one send at a time: a second Enter must not start the same jobs twice
+  sending = true; $("#send").disabled = true;
+  const from = thread, onPage = page;
+  try {
+    const r = await api("do", {text, prefer, thread: into || undefined, files: attached});
+    if (ask.value.trim() === text) ask.value = "";
+    attached = []; $("#att").innerHTML = "";
+    $("#preview").textContent = "";
+    if (thread !== from || page !== onPage) { loadThreads(); toast("Sent. It is in Recent."); }  // Ben moved on: stay
+    else if (r.thread !== thread || page) await openThread(r.thread);
+    else { await loadThread(true); loadThreads(); }
+  } catch (e) { toast(e.message, true); }
+  sending = false; fitAsk();
+}
+async function whereMenu(anchor) {
+  const models = await api("models").catch(() => []);
+  const item = (val, label, note = "") => `<button class="mi" data-js="pickwhere" data-v="${esc(val)}" data-l="${esc(label)}"><span class="tick">${prefer === val ? "✓" : ""}</span>${esc(label)}<small>${esc(note)}</small></button>`;
+  openMenu(anchor, item("auto", "Auto", "picks for each request") + item("local", "This PC", "one local model") + item("team", "Local team", "draft → review → answer; slower, local") + item("gemini", "Gemini", "your API connection") + (hides("improve") ? "" : item("improve", "Improve HyperDesk", "app changes by free and local AI")) + (S?.free && !S.free.why ? item("free", "Free cloud", "free models; no files, no Knowledge") : "") + (hides("claude") ? "" : item("cloud", "Claude", "questions go to the cloud"))
+    + '<div class="sep"></div><div class="hd">A specific model</div>' + (hides("claude") ? "" : item("model:claude", "Claude", "cloud"))
+    + models.filter(m => m.role !== "chat only").map(m => item("model:" + m.name, m.name, `${m.params || gb(m.size) + " GB"}${m.vram ? " · loaded" : ""}`)).join("")
+    + (models.some(m => m.role === "chat only") ? '<div class="sep"></div><div class="hd">Unrestricted chat · optional web access in Models</div>' + models.filter(m => m.role === "chat only").map(m => item("model:" + m.name, m.name, m.params || "")).join("") : ""), "up");
+}
+
+// ---------- attachments: picked files and folders are read where they are (Windows' own dialog, any size); dropped
+// or pasted ones are copied into state\uploads first. They stay with the conversation: follow-ups read them again.
+let attached = [];
+const base = p => p.split(/[\\/]/).filter(Boolean).pop() || p;
+const chip = (p, removable) => `<span class="chip" title="${esc(p)}">${icon("clip", "width:13px;height:13px;flex:none")}<span>${esc(base(p))}</span>${removable ? `<button data-js="unattach" data-p="${esc(p)}" aria-label="Remove ${esc(base(p))}">${icon("x", "width:12px;height:12px")}</button>` : ""}</span>`;
+function addFiles(paths) { attached = [...new Set([...attached, ...paths])].slice(0, 20); renderAtt(); }
+function renderAtt() { $("#att").innerHTML = attached.map(p => chip(p, true)).join(""); preview(); }
+async function pickFiles(kind) {
+  try {
+    const r = await api("pick", {kind});
+    addFiles(r.paths);
+    if (r.refused.length) toast(`Off limits (secrets or Windows' own files): ${r.refused.join(", ")}`, true);
+  } catch (e) { toast(e.message, true); }
+  ask.focus();
+}
+async function pickOpen(tool) {  // edits: a live session in that folder, which asks Ben before each change
+  try { const r = await api("pick", {kind: "folder"}); if (r.paths[0]) act({do: "project.open", path: r.paths[0], tool}); }
+  catch (e) { toast(e.message, true); }
+}
+async function upload(files) {
+  for (const f of files) {
+    if (f.size > 11e6) { toast(`${f.name} is over 11 MB: attach it with Attach → Files instead (nothing is copied).`, true); continue; }
+    try { addFiles([(await api("upload", {name: f.name, data: await toBase64(f)})).path]); }
+    catch (e) { toast(`${f.name}: ${e.message}`, true); }
+  }
+}
+function attachMenu(anchor) {
+  const mi = (js, label, note, data) => `<button class="mi" data-js="${js}"${attrs(data)}>${label}<small>${note}</small></button>`;
+  openMenu(anchor, '<div class="hd">Attach: read where it is, nothing copied</div>'
+    + mi("pick", "Files…", "any size", {k: "files"}) + mi("pick", "A folder…", "its text files", {k: "folder"})
+    + '<div class="block faint small">Or drop files on the box, or paste a screenshot.</div><div class="sep"></div><div class="hd">Change a folder’s files: a session that asks before each edit</div>'
+    + mi("pickopen", "Claude Code…", "knows your Knowledge", {tool: "claude"}) + mi("pickopen", "Qwen Code…", "on this PC", {tool: "qwen"}), "up");
+}
+document.addEventListener("dragover", e => { if (!e.dataTransfer?.types.includes("Files")) return; e.preventDefault(); if (!$("#dock").hidden) $(".composer").classList.add("drop"); });
+document.addEventListener("dragleave", e => { if (!e.relatedTarget) $(".composer").classList.remove("drop"); });
+document.addEventListener("drop", e => {
+  $(".composer").classList.remove("drop");
+  const items = [...(e.dataTransfer?.items || [])].filter(i => i.kind === "file");
+  if (!items.length) return;
+  e.preventDefault();  // never let the window navigate to a dropped file
+  if ($("#dock").hidden) return;
+  const isDir = i => i.webkitGetAsEntry?.()?.isDirectory;  // read now: the list empties after the event
+  if (items.some(isDir)) toast("Folders: use Attach → A folder…, so they are read where they are.", true);
+  upload(items.filter(i => !isDir(i)).map(i => i.getAsFile()).filter(Boolean));
+});
+ask.addEventListener("paste", e => { const files = [...(e.clipboardData?.files || [])]; if (files.length) { e.preventDefault(); upload(files); } });
+
+// ---------- knowledge: wrap up a conversation into a handoff and facts Ben ticks; skills and handoffs as notes
+async function wrapUp() {
+  if (!thread) return;
+  modal("Wrap up", '<p class="muted">Reading the conversation…</p>', btn("Cancel", {js: "close"}, "btn quiet"));
+  let w;
+  try { w = await api("wrapup", {thread}); }
+  catch (e) { if ($("#mh").textContent === "Wrap up") $("#mb").innerHTML = `<p class="bad">${esc(e.message)}</p>`; return; }
+  if (!$("#modal").classList.contains("open") || $("#mh").textContent !== "Wrap up") return;  // closed meanwhile
+  $("#mb").innerHTML = `<p class="small muted" style="margin-top:0">Drafted by ${esc(w.model)}. Change anything; nothing is kept until you save.</p>
+    <div class="form"><label for="wtitle">Handoff</label><input id="wtitle" value="${esc(w.title)}"><span></span><textarea id="wtext" rows="10">${esc(w.handoff)}</textarea>
+    <label>Remember</label><div>${w.facts.length ? w.facts.map(f => `<label class="small" style="display:flex;gap:8px;align-items:flex-start;margin:4px 0"><input type="checkbox" class="wfact" checked value="${esc(f)}">${esc(f)}</label>`).join("") : '<span class="muted small">Nothing new about you in this one.</span>'}</div></div>`;
+  $("#mf").innerHTML = `${btn("Cancel", {js: "close"}, "btn quiet")}${btn("Save", {js: "wrapsave"}, "btn go")}`;
+}
+async function saveWrap() {
+  const facts = [...document.querySelectorAll(".wfact:checked")].map(x => x.value);
+  if (await act({do: "knowledge.wrap", thread, title: $("#wtitle").value, text: $("#wtext").value, facts})) closeModal();
+}
+function noteForm(kind, name = "") {
+  const n = (VIEWS.knowledge.k?.[kind] || []).find(x => x.name === name);
+  const hint = kind === "skills" ? "# What this skill is for, in one line: this is what gets matched\n\nSteps, rules, examples…" : "# What this was about\n\nWhat was decided, what is still open…";
+  modal(name ? `Edit ${name}` : kind === "skills" ? "New skill" : "New handoff",
+    `<div class="form"><label for="kname">Name</label><input id="kname" value="${esc(name)}" placeholder="${kind === "skills" ? "e.g. pricing quotes" : "e.g. kitchen remodel"}"><label for="ktext">Text</label><textarea id="ktext" rows="14" placeholder="${esc(hint)}">${esc(n?.text || "")}</textarea></div>`,
+    `${btn("Cancel", {js: "close"}, "btn quiet")}${btn("Save", {js: "knotesave", kind, old: name}, "btn go")}`);
+  $(name ? "#ktext" : "#kname").focus();
+}
+async function saveNote(d) {
+  const name = $("#kname").value.trim();
+  if (!name) return toast("Give it a name.", true);
+  if (await act({do: "knowledge.save", kind: d.kind, name, old: d.old, text: $("#ktext").value})) { closeModal(); VIEWS.knowledge.refresh(); }
+}
+
+// ---------- menus
+function openMenu(anchor, html, dir) {
+  const m = $("#menu"), r = anchor.getBoundingClientRect();
+  m.innerHTML = html; m.classList.add("open");
+  const w = m.offsetWidth, h = m.offsetHeight;
+  m.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  m.style.top = (dir === "up" ? Math.max(8, r.top - h - 6) : Math.min(r.bottom + 6, innerHeight - h - 8)) + "px";
+}
+const closeMenu = () => $("#menu").classList.remove("open");
+
+// ---------- the research agent's requests: one at a time, Allow once or Refuse; no answer in 5 minutes = refused
+let shownApproval = "";
+function renderApproval() {
+  const ap = S?.approvals?.[0], box = $("#approve");
+  if (!ap) { box.classList.remove("open"); shownApproval = ""; return; }
+  const left = Math.max(0, 300 - Math.round((Date.now() - Date.parse(ap.at.replace(" ", "T"))) / 1000));
+  if (ap.id !== shownApproval) {
+    shownApproval = ap.id;
+    $("#ab").innerHTML = `<p class="muted small" style="margin-top:0">Working on “${esc(ap.task || "a research question")}”. It wants to:</p><div class="what">${esc(ap.what)}</div>
+      <p class="small muted">The browser is a fresh, empty profile, signed in nowhere. Say no to anything that sends personal data, signs in, buys or posts.</p>
+      <details><summary>Exact request</summary><pre class="box">${esc(ap.tool)}\n${esc(JSON.stringify(ap.input, null, 2))}</pre></details>`;
+    $("#af").innerHTML = `<span class="small faint grow" id="acount"></span>${btn("Refuse", {js: "approve", id: ap.id, allow: "no"}, "btn danger")}${btn("Allow once", {js: "approve", id: ap.id, allow: "yes"}, "btn go")}`;
+    box.classList.add("open");
+  }
+  $("#acount").textContent = `Refused automatically in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+}
+
+// ---------- console for the one-at-a-time maintenance commands (update, smoke, bench, merge, roll back): System page
+let logOff = 0, logActive = false, lastCmd, logText = "";
+function startLog() { logOff = 0; logText = ""; logActive = true; }  // each Runner command truncates the log file
+async function pollLog() {
+  if (!logActive) return;
+  const since = logOff, r = await api("log?since=" + since).catch(() => null);
+  if (!r || since !== logOff) return;  // another poll or a new run moved the offset: this chunk is stale or a duplicate
+  logText += r.text.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "");
+  logOff = r.next;
+  const box = $("#clog");
+  if (box) { const end = box._lost || box.scrollTop + box.clientHeight >= box.scrollHeight - 8; box.textContent = logText || "No command has run yet."; if (end) box.scrollTop = box.scrollHeight; box._lost = !box.clientHeight; }
+  if (!r.command.running && !r.text) {
+    logActive = false;
+    if (r.command.title) toast(`${r.command.title}: ${r.command.exit === 0 ? "done" : "exit " + r.command.exit}`, r.command.exit !== 0);
+    if (["tasks", "system", "video", "analytics", "sites"].includes(page)) VIEWS[page].render();
+    if (thread && !page) { rendered = {}; loadThread(); }  // a merge or roll back changes what a task's card offers
+  }
+}
+setInterval(pollLog, 1000);
+
+// ---------- voice: record in the page, transcribe on this PC
+let rec = null;  // null, "starting", or the running MediaRecorder
+const toBase64 = blob => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = no; r.readAsDataURL(blob); });
+async function toggleMic(d, el) {
+  if (rec === "starting") return;
+  if (rec) { rec.stop(); return; }
+  rec = "starting";
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({audio: true}); }
+  catch { rec = null; return toast("The microphone is blocked. Allow it for HyperDesk (the icon at the left of the title bar), then try again.", true); }
+  api("action", {do: "voice.warm"}).catch(() => {});
+  const chunks = [], recorder = new MediaRecorder(stream);
+  rec = recorder; el.classList.add("rec");
+  recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+  recorder.onstop = async () => {
+    rec = null; stream.getTracks().forEach(t => t.stop()); el.classList.replace("rec", "busy");
+    try {
+      const r = await api("transcribe", {audio: await toBase64(new Blob(chunks, {type: recorder.mimeType}))});
+      const box = $(d.target);
+      if (!r.text) toast("Heard nothing. Try again a little closer to the mic.", true);
+      else if (box) { box.value = (box.value.trim() ? box.value.trimEnd() + " " : "") + r.text; box.focus(); box.dispatchEvent(new Event("input")); }
+      else toast(`You said: ${r.text}`);
+    } catch (e) { toast(e.message, true); }
+    el.classList.remove("busy");
+  };
+  recorder.start();
+}
+function stopMic() { if (rec && rec !== "starting") rec.stop(); }
+
+// ---------- pages behind the sidebar menu
+async function openPage(name) {
+  if (window.studioCanLeave && !window.studioCanLeave()) return;
+  stopMic(); closeMenu();
+  page = name; clearTimeout(threadTimer); threadTimer = null;
+  $("#dock").hidden = true; dockComposer();
+  $("#title").textContent = TOOLS[name];
+  renderTools(); loadThreads();
+  $("#scroll").scrollTop = 0;
+  show(head("&nbsp;", esc(TOOLS[name]), "Loading…"));  // a page that loads before it draws must not sit under the last page's content
+  await VIEWS[name].render();
+}
+const show = html => { $("#view").innerHTML = `<div class="page">${html}</div>`; };
+// every page opens the same way: where it sits, its name, what it is for, its buttons on the right
+const head = (where, title, sub, acts = "") => `<div class="pagehead"><div><div class="eyebrow">${where}</div><h1>${title}</h1><p>${sub}</p></div>${acts ? `<div class="bar" style="margin:0">${acts}</div>` : ""}</div>`;
+const cache = {projects: [], models: [], tasks: null, repos: []};
+async function loadProjects(refresh) { cache.projects = await api("projects" + (refresh ? "?refresh=1" : "")); return cache.projects; }
+async function loadModels() { cache.models = await api("models"); return cache.models; }
+async function loadTasks() { const r = await api("tasks"); cache.tasks = r.tasks; cache.repos = r.repos; return r.tasks; }
+const SIZES = {square: "1:1", portrait: "2:3", landscape: "3:2", wide: "16:9"};
+
+const VIEWS = {
+  knowledge: {
+    async render() {
+      show(`${head("Workspace / Memory", "Knowledge", "What every model starts with, so nothing has to be learned again. Your context goes into every answer. A skill or handoff goes in when a request shares its words, and Claude sessions opened from HyperDesk get the list and read what fits. From any conversation: type <b>remember: …</b> to add a line, or press <b>Wrap up</b> to keep a handoff.", btn("Open folder", {do: "folder.open", name: "knowledge"}, "btn quiet"))}
+        <h2>Your context</h2><textarea id="kctx" rows="9" style="width:100%" placeholder="Who you are, your business, your PC, how you like answers. One fact per line."></textarea>
+        <div class="bar" style="margin-top:8px"><span class="small faint" id="ktidy"></span><span class="grow"></span>${btn("Tidy", {js: "ktidy"}, "btn quiet")}${btn("Save", {js: "ksave"}, "btn go")}</div>
+        <h2>Skills<span class="grow"></span>${btn("New skill", {js: "knote", kind: "skills"}, "btn quiet")}</h2>
+        <p class="small faint" style="margin-top:-4px">How you want a kind of job done. Its name and first line say what it is for: that is what gets matched.</p><div class="list" id="kskills"></div>
+        <h2>Handoffs<span class="grow"></span>${btn("New handoff", {js: "knote", kind: "handoffs"}, "btn quiet")}</h2><div class="list" id="khandoffs"></div>`);
+      this.saved = null;  // the context as the server has it; null until it loads, so Save cannot blank the file
+      const k = await api("knowledge").catch(e => (toast(e.message, true), null));
+      if (!k || !$("#kctx")) return;
+      this.saved = $("#kctx").value = k.context;
+      this.lists(k);
+    },
+    lists(k) {  // only the lists: a refresh must not wipe context Ben is typing
+      this.k = k;
+      for (const kind of ["skills", "handoffs"]) {
+        const box = $("#k" + kind);
+        if (box) box.innerHTML = k[kind].map(n => `<div class="item"><div class="grow" style="min-width:0"><div class="t">${esc(n.name)}</div><div class="s">${esc(n.text.split("\n").map(l => l.replace(/^#+\s*/, "").trim()).find(Boolean) || "")}</div></div>
+          <div class="acts2">${btn("Edit", {js: "knote", kind, name: n.name}, "btn quiet")}${btn("Delete", {js: "kdel", kind, name: n.name}, "btn quiet")}</div></div>`).join("") || '<p class="muted small">None yet.</p>';
+      }
+    },
+    async refresh() { const k = await api("knowledge").catch(e => (toast(e.message, true), null)); if (k) this.lists(k); },
+  },
+
+  projects: {
+    filter: "current", q: "",
+    async render() {
+      show(`${head("Workspace / Folders", "Projects", "Every folder Claude Code, Codex, Qwen Code or Agent OS has worked in, and the git repos in the workspace.")}
+        <div class="bar"><div class="seg">${["current", "past", "all"].map(f => `<button data-js="pfilter" data-f="${f}" class="${this.filter === f ? "on" : ""}">${f[0].toUpperCase() + f.slice(1)}</button>`).join("")}</div>
+        <input id="pq" placeholder="Filter" value="${esc(this.q)}" style="width:220px"><span class="grow"></span>${btn("Refresh", {js: "prefresh"}, "btn quiet")}</div>
+        <div class="list" id="plist"><p class="muted">Reading…</p></div>`);
+      $("#pq").addEventListener("input", e => { this.q = e.target.value; this.list(); });
+      await loadProjects().catch(e => toast(e.message, true));
+      this.list();
+    },
+    list() {
+      if (!$("#plist")) return;
+      const q = this.q.toLowerCase();
+      const rows = cache.projects.filter(e => (this.filter === "all" || (this.filter === "current") === e.active) && (e.name + e.path).toLowerCase().includes(q));
+      const git = e => !e.exists ? "folder missing" : !e.git ? "no git" : `${e.git.branch}${e.git.changed ? `, ${e.git.changed} changed` : ", clean"}${e.git.ahead ? `, ↑${e.git.ahead}` : ""}`;
+      $("#plist").innerHTML = rows.map(e => `<div class="item"><span class="dot ${e.active ? "" : "off"}"></span><div class="grow" style="min-width:0">
+          <div class="t">${esc(e.name)} <span class="faint small">· ${esc(git(e))} · ${ago(e.last)}</span></div>
+          <div class="s" title="${esc(e.path)}">${esc(e.path)} · ${esc(Object.entries(e.agents).map(([k, n]) => `${k} ${n}`).join(", ") || "no agent sessions yet")}</div></div>
+          ${e.exists ? `<div class="acts2">${[["claude", "Claude"], ["codex", "Codex"], ["qwen", "Qwen"], ["terminal", "Terminal"], ["explorer", "Folder"]].map(([t, l]) => btn(l, {do: "project.open", path: e.path, tool: t}, "btn quiet")).join("")}${e.in_workspace ? btn("New task", {js: "task", repo: e.name}) : ""}</div>` : ""}</div>`).join("")
+        || `<p class="muted">No ${this.filter === "all" ? "" : this.filter + " "}projects. Current means agent activity in the last 14 days.</p>`;
+    },
+  },
+
+  tasks: {
+    async render() {
+      show(`${head("Workspace / Changes", "Tasks", "App changes and research. A change ready to apply has passed its tests in a separate copy. Review the result, then apply it with one click.", btn("Refresh", {js: "trefresh"}, "btn quiet") + btn("New task", {js: "task"}, "btn go"))}<div id="tlist"><p class="muted">Reading…</p></div>`);
+      await loadTasks().catch(e => toast(e.message, true));
+      if (!$("#tlist")) return;
+      const tone = s => ({AWAITING_APPROVAL: "ok", FAILED: "bad", COMPLETED: "", ROLLED_BACK: ""}[s] ?? "warn");
+      const name = s => ({AWAITING_APPROVAL: "ready to apply", COMPLETED: "done", ROLLED_BACK: "discarded"}[s] || s.toLowerCase().replace(/_/g, " "));
+      $("#tlist").innerHTML = (cache.tasks || []).length ? `<table><tr><th>When</th><th>State</th><th>Agent</th><th>Tests</th><th>Repo</th><th>Task</th><th></th></tr>${cache.tasks.map(t => `<tr class="click" data-js="inspect" data-id="${esc(t.id)}">
+        <td class="small faint">${esc(t.created.slice(5, 16))}</td><td>${t.stale ? `<span class="tag bad" title="${esc(name(t.state))} for far longer than any run takes: nothing is working on it">stalled</span>` : `<span class="tag ${tone(t.state)}">${esc(name(t.state))}</span>`}</td><td class="small">${esc(t.agent || "")}</td>
+        <td class="small">${t.tests_before ?? ""}${t.tests_after != null ? " → " + t.tests_after : ""}</td><td class="small">${esc((t.repo || "").split("\\").pop())}</td>
+        <td class="clip" title="${esc(t.task)}">${esc(t.task)}</td>
+        <td style="text-align:right;white-space:nowrap">${t.state === "AWAITING_APPROVAL" ? btn("Apply update", {do: "merge", id: t.id, confirm: `Apply this tested change to ${t.repo}? If this changes HyperDesk, close and reopen the app afterward.`}, "btn go") + " " : ""}${t.undoable ? btn("Undo update", {do: "undo", id: t.id, confirm: `Put back the version from before this change? A new version is saved; nothing is deleted.`}, "btn quiet") : ""}${["AWAITING_APPROVAL", "FAILED"].includes(t.state) && t.repo !== "web" || t.stale ? btn("Discard proposal", {do: "rollback", id: t.id, confirm: `Discard this proposed change? Your current files stay as they are.`}, "btn quiet") : ""}</td></tr>`).join("")}</table>`
+        : '<p class="muted">No tasks yet. Put a git repo in the workspace folder, then ask for a change in it.</p>';
+    },
+  },
+
+  images: {
+    form: {size: "square", steps: 28, cfg: 6.5, count: 1, seed: "", negative: "blurry, low quality, watermark, text", free: true},
+    async render() {
+      const f = this.form;
+      show(`${head("Create / Pictures", "Images", 'Everything ComfyUI has made. To make one, just ask in a conversation ("draw …"); the settings below are there when you want them.', btn("Open folder", {do: "folder.open", name: "images"}, "btn quiet") + btn("Refresh", {js: "irefresh"}, "btn quiet"))}
+        <details ${f.open ? "open" : ""} id="idet"><summary>Generate with settings</summary>
+          <div class="form" style="margin:10px 0 18px">
+            <label for="iprompt">Prompt</label><textarea id="iprompt" rows="2">${esc(f.prompt || "")}</textarea>
+            <label for="ineg">Avoid</label><input id="ineg" value="${esc(f.negative)}">
+            <label>Shape</label><div class="seg">${Object.keys(SIZES).map(k => `<button data-js="isize" data-k="${k}" class="${f.size === k ? "on" : ""}">${k} ${SIZES[k]}</button>`).join("")}</div>
+            <label for="isteps">Steps, guidance</label><div class="bar" style="margin:0"><input id="isteps" type="number" min="8" max="60" value="${f.steps}" style="width:80px"><input id="icfg" type="number" min="1" max="15" step="0.5" value="${f.cfg}" style="width:80px" aria-label="Guidance"><span class="small faint">more steps = finer, slower; guidance = how literally</span></div>
+            <label for="icount">Count, seed</label><div class="bar" style="margin:0"><input id="icount" type="number" min="1" max="4" value="${f.count}" style="width:80px"><input id="iseed" placeholder="random" value="${esc(f.seed)}" style="width:160px" aria-label="Seed"></div>
+            <span></span><div class="bar" style="margin:0"><label class="small muted"><input type="checkbox" id="ifree" ${f.free ? "checked" : ""}> unload chat models first</label><span class="grow"></span><button class="btn go" id="igo" data-js="generate" ${imageJob.running ? "disabled" : ""}>Generate</button></div>
+          </div><div id="ijob">${imageJob.html}</div></details>
+        <div class="thumbs" id="igal" style="margin-top:12px"><p class="muted">Reading…</p></div>`);
+      $("#idet").addEventListener("toggle", e => f.open = e.target.open);
+      $("#iprompt").addEventListener("input", e => { f.prompt = e.target.value; });  // kept when Ben leaves the page
+      this.gallery();
+    },
+    async gallery() {
+      const r = await api("images").catch(e => (toast(e.message, true), null));
+      if (!r || !$("#igal")) return;
+      this.items = r.images;
+      $("#igal").innerHTML = r.images.map(g => `<button data-js="iview" data-name="${esc(g.name)}" title="${esc(g.prompt || g.name)}"><img loading="lazy" alt="${esc(g.prompt || g.name)}" src="/api/image/file?name=${encodeURIComponent(g.name)}&t=${T}"></button>`).join("") || '<p class="muted">No images yet.</p>';
+    },
+  },
+
+  video: {
+    form: {path: "", cut: "clean", for: "both", frame: "fit", directions: "", seconds: 59, fresh: false},
+    async render() {
+      const f = this.form, r = await api("video").catch(e => (toast(e.message, true), null));
+      if (!r || page !== "video") return;
+      const q = r.quick;  // Quick edit (the lite build): no AI, typed commands, one landscape export unless picked
+      if (q && this.quick === undefined) f.for = "youtube";
+      this.quick = q;
+      const seg = (k, opts) => `<div class="seg">${opts.map(([v, l]) => `<button data-js="vset" data-k="${k}" data-v="${v}" aria-pressed="${f[k] === v}" class="${f[k] === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
+      const mins = s => `${(s / 60).toFixed(1)} min`;
+      show(`${q ? head("Create / Video", "Quick edit", "Cut the pauses out of a recording, plus any edits you type. No AI, and your files stay on this PC.")
+          : head("Create / Video", "Video editor", "Clean up a recording or let AI find the highlights. Your files stay on this PC.", '<button class="btn quiet" data-page="analytics" data-tab="videos">View performance →</button>')}
+        ${r.ready ? "" : q ? '<p class="note warn">Quick edit needs FFmpeg. Run <span class="mono">winget install Gyan.FFmpeg</span>, then close HyperDesk and open it again.</p>'
+          : '<p class="note warn">The video editor is unavailable. Check its installation in System before starting an edit.</p>'}
+        <div class="studio-grid"><section class="surface" aria-label="Edit a video">
+          <div class="workflow-step"><b>01</b> Choose your recording</div>
+          <div class="filepick"><span class="small grow" id="vpath">${f.path ? esc(f.path) : 'No video selected · MP4, MOV, MKV or M4V'}</span>${btn("Choose file", {js: "vpick"})}</div>
+          <div class="workflow-step"><b>02</b> Choose the edit</div>
+          <div class="field" ${q ? "hidden" : ""}><label>Edit style</label>${seg("cut", [["clean", "Clean up"], ["highlights", "AI highlights"]])}
+            <p class="help" id="vstyle">${f.cut === "clean" ? "Keep the recording. Remove still, silent pauses and smooth the cuts." : "AI scores the scenes and keeps the strongest moments."}</p></div>
+          ${q ? `<div class="field"><label for="vdir">Typed edits <span class="faint small">Optional · one per line</span></label><textarea id="vdir" rows="4" maxlength="2000" placeholder="trim start 5&#10;cut 2:10-2:40&#10;transition none">${esc(f.directions)}</textarea><p class="help">Leave it empty to only cut the pauses. A line Quick edit can't read is refused before anything starts. Every command is listed on the right.</p></div>`
+          : `<div class="field"><label for="vdir">What would you like to change? <span class="faint small">Optional · Clean up only</span></label><textarea id="vdir" rows="3" maxlength="2000" placeholder="Trim the first 5 seconds. Speed up 4:00–6:30. Leave the pauses in.">${esc(f.directions)}</textarea><p class="help">Directions use local AI. Requests about what is on screen also analyze the footage.</p></div>`}
+          <div class="workflow-step"><b>03</b> Set your exports</div>
+          <div class="field"><label>Export for</label>${seg("for", [["both", "Both formats"], ["youtube", "YouTube · 16:9"], ["social", "Reels / TikTok · 9:16"]])}</div>
+          <div class="field" id="vvertical" ${f.for === "youtube" ? "hidden" : ""}><label>Vertical framing</label>${seg("frame", [["fit", "Fit entire frame"], ["crop", "Crop to fill"]])}<p class="help">Fit adds a blurred background, useful for screen recordings. Crop fills the phone screen.</p></div>
+          <div class="field" id="vlength" ${f.cut !== "highlights" || f.for === "youtube" ? "hidden" : ""}><label for="vsec">Maximum vertical highlight length</label><input id="vsec" type="number" min="10" max="180" value="${f.seconds}"> <span class="small muted">seconds · 10–180</span></div>
+          <div class="bar" style="margin:24px 0 0"><label class="small muted"><input type="checkbox" id="vfresh" ${f.fresh ? "checked" : ""}> ${q ? "Find the pauses again" : "Re-analyze instead of using saved analysis"}</label><span class="grow"></span><button id="vsubmit" class="btn go" data-js="vgo" ${r.command.running || !r.ready || !f.path ? "disabled" : ""}>Create edit</button></div>
+          <p class="help" id="vbusy">${r.command.running ? `A command is running: ${esc(r.command.title)}. You can edit when it finishes.` : "Exports are saved in a project folder. Your original recording stays intact."}</p>
+        </section>${q ? `<aside class="surface"><div class="eyebrow">Typed edits</div><h3>One per line</h3><pre class="box" style="white-space:pre-wrap;font-size:12px">${esc(r.forms)}</pre>
+          <details class="disclosure"><summary>What happens during an edit?</summary><p class="small">Quick edit finds the frozen, silent pauses and cuts them, keeping a short pad at each end, then applies your typed edits. It encodes on an NVIDIA graphics card when it can, otherwise on the CPU (slower). No AI and no internet.</p></details>
+        </aside>` : `<aside class="surface"><div class="eyebrow">Your workflow</div><h3>Edit here. Measure there.</h3><p>Once your video is published, check which videos earn views, likes and shares.</p><button class="btn" data-page="analytics" data-tab="videos">Video analytics →</button>
+          <details class="disclosure"><summary>What happens during an edit?</summary><p class="small">Clean up cuts still, silent sections and adds short transitions. AI highlights reviews scenes and selects moments. AI analysis needs free GPU memory and pauses while a game runs.</p></details>
+          <details class="disclosure"><summary>Using the exports in Resolve</summary><p class="small">Clean up creates MP4s ready to post or add to a Resolve timeline. For highlights, import the ai_clips media, then timeline_youtube.fcpxml using File → Import → Timeline.</p></details>
+        </aside>`}</div>
+        <details class="disclosure" ${r.command.running ? "open" : ""}><summary>Editing progress & console</summary><pre class="box" id="clog">${esc(logText) || "Start an edit to see progress here."}</pre></details>
+        <div class="sectionhead"><h2>Your edits</h2>${btn("Open exports folder", {do: "folder.open", name: "videos"}, "btn quiet")}</div>
+        <div>${r.projects.map(p => { const s = p.summary, c = p.clean; const before = c.before || s.original_duration, after = c.after ?? s.output_duration;
+          const saved = before > 0 && Number.isFinite(after) ? Math.max(0, (1 - after / before) * 100) : null;
+          return `<article class="projectcard"><div class="bar"><h3 class="grow">${esc(p.name)}</h3>${p.youtube ? '<span class="tag">YouTube</span>' : ""}${p.vertical ? '<span class="tag">Vertical</span>' : ""}${btn("Open files", {do: "project.open", path: p.path, tool: "explorer"}, "btn quiet")}</div>
+          <div class="small muted">${before ? `${mins(before)} original → ${mins(after || 0)} edited${saved !== null ? ` · ${saved.toFixed(0)}% trimmed` : ""} · ` : ""}${c.before ? `${esc(c.cuts)} cuts · ` : ""}${ago(p.when)}</div></article>`; }).join("") || '<div class="empty"><b>Your first edit starts here.</b>Choose a recording above. Finished exports will appear here.</div>'}</div>`);
+      $("#vdir").addEventListener("input", e => { f.directions = e.target.value; });
+      $("#vsec").addEventListener("input", e => { f.seconds = e.target.value; });
+      $("#vfresh").addEventListener("change", e => { f.fresh = e.target.checked; });
+      this.ready = r.ready; this.busy = r.command.running;
+      this.fields();
+    },
+    fields() {
+      const f = this.form;
+      $("#vstyle").textContent = f.cut === "clean" ? "Keep the recording. Remove still, silent pauses and smooth the cuts." : "AI scores the scenes and keeps the strongest moments.";
+      $("#vdir").disabled = f.cut !== "clean";
+      $("#vvertical").hidden = f.for === "youtube";
+      $("#vlength").hidden = f.cut !== "highlights" || f.for === "youtube";
+      $("#vsubmit").disabled = !f.path || !this.ready || this.busy;
+    },
+  },
+
+  analytics: {
+    days: 28, platform: "all", query: "", sort: "views", tab: (() => { try { return localStorage.getItem("atab") || "overview"; } catch { return "overview"; } })(),
+    async render() {
+      if (S?.share) return this.lite();  // before any sync, Task Scheduler or database call: a shared PC has none
+      const r = await api("analytics?page=1").catch(e => (toast(e.message, true), null));
+      if (!r || page !== "analytics") return;
+      const t = r.task, on = t.exists && t.enabled;
+      const runs = r.runs.map(x => `<span class="tag ${x.ok ? (x.message.includes("WARN") ? "warn" : "ok") : "bad"}" title="${esc(x.message)}">${esc(x.source)}</span>`).join(" ");
+      // one tab bar for everything: the dashboard frame shows the tab HyperDesk tells it to (sdaView); Videos adds the library above it
+      show(`${head("Measure / SilvaDes", "Video & site analytics", "Videos, silvades.com and the shop, a tab each. Not sure where something is? Overview ends with a map of every tab, and Ctrl K finds any of them.", `${btn("Open folder", {do: "folder.open", name: "analytics"}, "btn quiet")}${r.dashboard ? btn("Open in browser", {do: "analytics.open"}, "btn quiet") : ""}<button class="btn go" data-do="analytics.sync" ${r.command.running || !r.ready ? "disabled" : ""}>Sync now</button>`)}
+        <div id="aprog"></div><div id="anext"></div>
+        <div class="atabs" role="tablist" aria-label="Analytics sections">${Object.entries(ATABS).map(([k, [l]]) => `<button role="tab" id="atab-${k}" aria-controls="apanel" data-js="atab" data-tab="${k}">${l}</button>`).join("")}</div>
+        <div id="apanel" role="tabpanel"><p class="tabnote" id="atabnote"></p>
+        <div id="avideo"><p class="muted">Reading saved video performance…</p></div>
+        <div id="asources"><p class="sub">SilvaDes numbers from YouTube, silvades.com, Instagram, Facebook, TikTok and Squarespace, read-only. Automatic sync runs every hour from 7:00 to 23:00, or at the next wake if the PC was asleep, at low priority so it never competes with a game: the first run from 10:00 is the full sync, the others refresh the newest posts in a few seconds for Trends. Sync now runs at full speed. Each week's first run also writes a report with your local model (skipped while a game runs).</p>
+        ${r.ready ? "" : '<p class="small" style="color:var(--warn)">silvades-analytics is not in the workspace folder.</p>'}
+        <div class="list"><div class="item"><button class="switch ${on ? "on" : ""}" role="switch" aria-checked="${on}" aria-label="Automatic sync" data-js="atoggle" data-on="${on ? 0 : 1}" ${t.exists ? "" : "disabled"}></button>
+          <div class="grow"><div class="t">Automatic sync ${on ? "on" : "off"}</div><div class="s">${!t.exists ? "The Task Scheduler entry is missing: see STATUS.md in the project folder" : on ? "Every hour 7:00–23:00 (full sync from 10:00), or at the next wake if the PC was asleep" : "Paused: Task Scheduler skips it until you turn it back on"}</div></div></div></div>
+        <p class="small">${r.synced ? `Sources in the last sync ${runs}` : '<span class="muted">No sync has run yet.</span>'}</p>
+        <details class="disclosure" ${r.command.running ? "open" : ""}><summary>Sync console</summary><pre class="box" id="clog">${esc(logText) || "No command has run yet."}</pre></details></div>
+        ${r.html ? `<iframe id="adash" name="${esc(this.tab)}" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" title="SilvaDes dashboard" style="width:100%;height:${this.fh || 600}px;border:0;display:block"></iframe>` : '<div class="empty" id="anodash"><b>No dashboard yet</b>Press Sync now to build it.</div>'}</div>`);
+      const f = $("#adash");
+      // sandboxed, no same-origin, and T is no longer in this page's address (its base URL): the dashboard's script never sees the
+      // token. Its links open as ordinary windows (escape-sandbox), so YouTube and TikTok keep their cookies and sign-ins.
+      if (f) { f.addEventListener("load", () => this.tabTo(this.tab)); f.srcdoc = r.html; }
+      $(".atabs").addEventListener("keydown", e => {  // arrow keys move along the tab bar
+        const tabs = [...document.querySelectorAll('[data-js="atab"]')], i = tabs.indexOf(document.activeElement), d = {ArrowRight: 1, ArrowLeft: -1}[e.key];
+        if (i < 0 || !d) return;
+        e.preventDefault(); const next = tabs[(i + d + tabs.length) % tabs.length]; next.focus(); this.pick(next.dataset.tab);
+      });
+      this.r = r;
+      this.tabTo(this.tab);
+      this.live();
+      this.loadVideos();
+    },
+    lite() {  // the lite build's Post trends: a CSV the user exported, read in this page and reported by post_trends.py
+      show(`${head("Measure", "Post trends", "Export your posts as a CSV from TikTok Studio, YouTube Studio (unzip it and pick Table data.csv) or Meta Business Suite, then choose the file. It never leaves this PC, and no sign-in is needed.")}
+        <div class="filepick"><span class="small grow" id="tname">${this.lfile ? esc(this.lfile) : "No file selected · CSV"}</span>${btn("Choose CSV", {js: "tpick"})}<input type="file" id="tfile" accept=".csv,text/csv" hidden></div>
+        ${this.lhtml ? '<iframe id="adash" sandbox="allow-scripts" title="Post trends report" style="width:100%;height:600px;border:0;display:block;margin-top:16px"></iframe>'
+          : '<div class="empty"><b>No report yet</b>Choose a CSV export above. It shows which hashtags, days and times beat your usual, and your top posts.</div>'}`);
+      $("#tfile").addEventListener("change", e => { const file = e.target.files[0]; e.target.value = ""; this.read(file); });  // the same file again (re-exported) fires change too
+      if (this.lhtml) $("#adash").srcdoc = this.lhtml;
+    },
+    async read(file) {
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) return toast("That CSV is over 5 MB: export a shorter date range.", true);
+      const r = await api("trends", {csv: await file.text()}).catch(e => (toast(e.message, true), null));
+      if (!r || page !== "analytics") return;
+      Object.assign(this, {lhtml: r.html, lfile: file.name}); this.lite();
+    },
+    tabTo(k) {  // show tab k: HyperDesk's own panels, and the dashboard frame's view
+      if (!ATABS[k]) k = "overview";
+      this.tab = k;
+      try { localStorage.setItem("atab", k); } catch {}
+      document.querySelectorAll('[data-js="atab"]').forEach(b => { const on = b.dataset.tab === k; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; });
+      $("#apanel")?.setAttribute("aria-labelledby", "atab-" + k);
+      put($("#atabnote"), esc(ATABS[k][1]) + (k === "videos" && $("#adash") ? ' <button class="btn quiet" data-js="aframetop">Scorecard, best time to post, top posts ↓</button>' : ""));
+      if ($("#avideo")) $("#avideo").hidden = k !== "videos";
+      if ($("#asources")) $("#asources").hidden = k !== "sources";
+      if ($("#anodash")) $("#anodash").hidden = k === "videos" || k === "sources";
+      const f = $("#adash");
+      if (f) { f.hidden = k === "sources"; if (k !== "sources") f.contentWindow?.postMessage({sdaView: k}, "*"); }
+    },
+    pick(k, y) {  // a click on a tab (or a go-to button in the dashboard): switch, then bring the tab's top (or y px into the frame) under the bar
+      this.tabTo(k);
+      const s = $("#scroll"), bar = $(".atabs"), f = $("#adash"), panel = $("#apanel");
+      if (!s || !bar || !panel) return;
+      const top = y === undefined ? panel.getBoundingClientRect().top : f.getBoundingClientRect().top + y;
+      const by = top - s.getBoundingClientRect().top - bar.offsetHeight - (y === undefined ? 0 : 8);  // where the bar sits once stuck
+      if (y !== undefined || by < 0) s.scrollBy(0, by);
+    },
+    async loadVideos() {
+      const requested = this.days, serial = this.request = (this.request || 0) + 1;
+      try {
+        const r = await api("video/analytics?days=" + requested);
+        if (page !== "analytics" || this.request !== serial || !$("#avideo")) return;
+        this.report = r;
+        if (!r.available) {
+          $("#avideo").innerHTML = `<div class="empty"><b>No video performance data yet</b>${esc(r.message)}<p class="small">Use Sync now above, then return to this page.</p></div>`;
+          return;
+        }
+        const names = {youtube: "YouTube", instagram: "Instagram", tiktok: "TikTok"};
+        const channels = new Map([...r.platforms, ...r.videos].map(v => [`${v.platform}:${v.account}`, `${names[v.platform] || v.platform} · ${v.account}`]));
+        if (!channels.has(this.platform)) this.platform = "all";
+        $("#avideo").innerHTML = `<div class="sectionhead"><h2>Video library</h2><p>Saved snapshots · latest ${esc(r.latest_snapshot || r.end)}</p></div>
+          <p class="small muted">Lifetime totals for public YouTube videos, TikToks and Instagram reels. The date window below applies to channel activity and video growth, not lifetime totals.</p>
+          <div class="analytics-tools"><input id="asearch" type="search" placeholder="Find a video…" aria-label="Search videos" value="${esc(this.query)}">
+            <select id="achannel" aria-label="Filter by channel"><option value="all">All channels</option>${[...channels].map(([key, label]) => `<option value="${esc(key)}" ${this.platform === key ? "selected" : ""}>${esc(label)}</option>`).join("")}</select>
+            <select id="asort" aria-label="Sort videos">${[["views", "Most viewed"], ["engagement_rate", "Highest engagement"], ["likes", "Most liked"], ["shares", "Most shared"], ["period_views", "Most growth"], ["created", "Newest published"]].map(([v, l]) => `<option value="${v}" ${this.sort === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+          <div id="avmetrics"></div>
+          <div class="sectionhead"><h2>Channel activity</h2><div class="seg" aria-label="Reporting window">${[7, 28, 90].map(d => `<button data-js="awindow" data-days="${d}" aria-pressed="${d === this.days}" class="${d === this.days ? "on" : ""}">${d} days</button>`).join("")}</div></div>
+          <p class="small muted">${esc(r.start)} – ${esc(r.end)} · Window ends on the latest saved account data. Search filters videos above; channel activity follows the channel filter.</p>
+          <div id="acharts" class="channel-grid"></div>
+          <div class="sectionhead"><h2>Video breakdown</h2><p>Ranked by your selected sort · lifetime metrics</p></div><div id="avtable"></div>
+          <details class="disclosure"><summary>How to read these numbers & missing data</summary>${r.coverage.map(x => `<p class="small muted">${esc(x)}</p>`).join("")}</details>`;
+        $("#asearch").addEventListener("input", e => { this.query = e.target.value; this.limit = 25; this.drawVideos(); });
+        $("#achannel").addEventListener("change", e => { this.platform = e.target.value; this.limit = 25; this.drawVideos(); });
+        $("#asort").addEventListener("change", e => { this.sort = e.target.value; this.limit = 25; this.drawVideos(); });
+        this.limit = 25;
+        this.drawVideos();
+      } catch (e) {
+        if (page === "analytics" && this.request === serial && $("#avideo")) $("#avideo").innerHTML = `<div class="empty"><b>Video report could not load</b>${esc(e.message)}<p>Restart HyperDesk if it was open before this update.</p><button class="btn" data-js="aretry">Try again</button></div>`;
+      }
+    },
+    drawVideos() {
+      if (!$("#avtable") || !this.report) return;
+      const r = this.report, days = r.days, n = value => value === null || value === undefined ? "—" : Number(value).toLocaleString([], {maximumFractionDigits: 0});
+      const match = v => this.platform === "all" || `${v.platform}:${v.account}` === this.platform;
+      const q = this.query.toLowerCase().trim();
+      const rows = r.videos.filter(v => match(v) && `${v.title} ${v.account} ${v.platform}`.toLowerCase().includes(q));
+      rows.sort((a, b) => this.sort === "created" ? (Date.parse(b.created) || 0) - (Date.parse(a.created) || 0)
+        : (b[this.sort] ?? -1) - (a[this.sort] ?? -1));
+      const total = key => { const known = rows.filter(v => v[key] !== null && v[key] !== undefined); return [known.length ? known.reduce((s, v) => s + v[key], 0) : null, known.length]; };
+      const metric = (name, value, hint) => `<div class="metric"><span class="name">${name}</span><strong>${n(value)}</strong><small>${hint}</small></div>`;
+      const views = total("views"), likes = total("likes"), comments = total("comments");
+      $("#avmetrics").innerHTML = `<div class="metricstrip">${metric("Lifetime views", views[0], "Across matching videos")}${metric("Likes recorded", likes[0], `${likes[1]} of ${rows.length} videos report likes`)}${metric("Comments recorded", comments[0], `${comments[1]} of ${rows.length} videos report comments`)}${metric("Videos", rows.length, this.platform === "all" ? "Across all channels" : "In this channel")}</div>`;
+      const max = Math.max(1, ...rows.map(v => v.views || 0));
+      const names = {youtube: "YouTube", instagram: "Instagram", tiktok: "TikTok"};
+      $("#avtable").innerHTML = rows.length ? `<div class="tablewrap"><table class="video-table"><caption class="small muted" style="text-align:left;padding:12px">${Math.min(rows.length, this.limit)} of ${rows.length} matching videos · lifetime totals; growth uses each video's snapshot date</caption>
+        <thead><tr><th scope="col">#</th><th scope="col">Video / channel</th><th scope="col" class="num">Views</th><th scope="col" class="num">Likes</th><th scope="col" class="num">Comments</th><th scope="col" class="num">Shares</th><th scope="col" class="num">Engagement</th><th scope="col" class="num">${days}d growth</th></tr></thead>
+        <tbody>${rows.slice(0, this.limit).map((v, i) => `<tr><td class="rank">${i + 1}</td><td class="video-title">${/^https?:\/\//i.test(v.url || "") ? btn(esc(v.title), {do: "browser.open", name: "Edge", url: v.url}, "") : esc(v.title)}<small>${esc(names[v.platform] || v.platform)} · ${esc(v.account)}${v.created ? ` · ${esc(v.created.slice(0, 10))}` : ""}<br>Snapshot ${esc(v.snapshot_date)}</small></td>
+          <td class="num">${n(v.views)}<div class="viewbar" aria-hidden="true"><i style="width:${(v.views || 0) / max * 100}%"></i></div></td><td class="num">${n(v.likes)}</td><td class="num">${n(v.comments)}</td><td class="num">${n(v.shares)}</td>
+          <td class="num" title="${esc(v.engagement_basis || "Required interaction metrics unavailable")}">${v.engagement_rate === null ? "—" : `${v.engagement_rate.toFixed(1)}%`}</td>
+          <td class="num" title="${esc(v.period_start)} – ${esc(v.period_end)}${v.period_views === null ? ': needs boundary snapshots' : ''}">${v.period_views === null ? "—" : `+${n(v.period_views)}`}</td></tr>`).join("")}</tbody></table></div>
+          <div class="bar" style="margin-top:10px"><span class="small muted grow">— means unavailable. Engagement uses the actions reported by each platform; hover for its formula.</span>${rows.length > this.limit ? '<button class="btn quiet" data-js="amore">Show 25 more</button>' : ""}</div>`
+        : '<div class="empty"><b>No videos match.</b>Try a different title or channel.</div>';
+      if (r.truncated) $("#avtable").insertAdjacentHTML("beforeend", `<p class="note">Showing the ${r.videos.length} most-viewed videos out of ${n(r.video_count)} collected. Library totals and filters apply to these loaded videos.</p>`);
+      $("#acharts").innerHTML = r.platforms.filter(match).sort((a, b) => (b.views !== null) - (a.views !== null)).map(c => {
+        const trend = c.trend || [], peak = Math.max(1, ...trend.map(t => t.views || 0));
+        const chart = trend.length ? `<svg class="chart" role="img" aria-label="${esc(c.label)} daily views. ${trend.length} observed days. Missing days are gaps." viewBox="0 0 300 100"><line class="axis" x1="0" y1="78" x2="300" y2="78"/>${trend.map(t => {
+          const d = Math.round((Date.parse(t.date) - Date.parse(r.start)) / 86400000), width = 296 / days, h = Math.max(1, t.views / peak * 66);
+          return `<rect x="${d * width + 2}" y="${78 - h}" width="${Math.max(1, width - 1)}" height="${h}"><title>${esc(t.date)}: ${n(t.views)} views</title></rect>`;
+        }).join("")}<text x="2" y="96">${esc(r.start.slice(5))}</text><text x="298" y="96" text-anchor="end">${esc(r.end.slice(5))}</text></svg>` : '<p class="note">Daily growth needs consecutive saved snapshots.</p>';
+        const change = c.change_pct === null ? "Comparison unavailable" : `${c.change_pct >= 0 ? "+" : ""}${c.change_pct.toFixed(1)}% vs previous ${days} days`;
+        return `<section class="surface"><div class="eyebrow">${esc(c.label)}</div><h3>${esc(c.account)}</h3><strong>${n(c.views)} <span class="small muted">observed views</span></strong><div class="help">${change}</div>${chart}
+          <div class="small muted">${c.coverage_days} of ${days} days observed${c.latest_date ? ` · through ${esc(c.latest_date)}` : ""}</div>
+          ${c.watch_minutes !== null ? `<p class="small">${n(c.watch_minutes)} min watched · ${c.average_watch_seconds === null ? "—" : c.average_watch_seconds.toFixed(1) + "s"} average view${c.net_subscribers !== null ? ` · ${c.net_subscribers >= 0 ? "+" : ""}${n(c.net_subscribers)} subscribers` : ""}</p>` : ""}
+          ${c.notes.length ? `<details class="disclosure"><summary>Coverage & reporting notes</summary>${c.notes.map(x => `<div class="help">${esc(x)}</div>`).join("")}</details>` : ""}</section>`;
+      }).join("") || '<div class="empty">Channel activity has not been collected for this selection.</div>';
+    },
+    live() {  // every status poll (4 s): the countdown and the sync's progress move without re-rendering the page
+      const r = this.r;
+      if (!r || page !== "analytics" || !$("#anext")) return;
+      const t = r.task, now = Date.now(), span = ms => { const m = Math.max(0, Math.round(ms / 60000)); return m < 60 ? `${m} min` : m < 2880 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${Math.round(m / 1440)} days`; };
+      const time = s => { const d = Date.parse(s || ""); return d > Date.UTC(2001, 0) ? d : null; };  // schtasks says 1999 for "never"
+      const last = Math.max(...[time(t.last_iso || t.last), time(r.synced)].filter(Boolean), 0) || null;  // a Sync now counts too
+      const next = time(t.next_iso || t.next);
+      const when = d => new Date(d).toLocaleString([], {weekday: "short", hour: "numeric", minute: "2-digit"});
+      let bar = "";
+      if (t.exists && !t.enabled) bar = `<div class="meter idle" role="img" aria-label="Automatic sync paused"><i style="width:100%"></i></div><div class="meterrow"><span>${last ? `Last sync <b>${span(now - last)} ago</b>` : "No sync yet"}</span><span>Paused: no automatic syncs</span></div>`;
+      else if (t.exists && next && last) {
+        const due = now >= next, f = due ? 1 : Math.min(1, Math.max(0, (now - last) / (next - last)));
+        bar = `<div class="meter ${due ? "due" : ""}" role="progressbar" aria-label="Time until the next sync" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(f * 100)}"><i style="width:${(f * 100).toFixed(1)}%"></i></div>
+          <div class="meterrow"><span>Last sync <b>${span(now - last)} ago</b></span><span>${due ? "Next sync is due: it runs as soon as the PC is awake" : `Next sync in <b>${span(next - now)}</b> · ${when(next)}`}</span></div>`;
+      }
+      put($("#anext"), bar);
+      const steps = ["youtube", "ga4", "meta", "tiktok", "squarespace", "dashboard"];
+      const syncing = S?.command?.running && S.command.title === "analytics sync";
+      const done = steps.filter(s => new RegExp(`^(sync )?${s}:`, "m").test(logText)).length;
+      put($("#aprog"), syncing ? `<div class="meter" role="progressbar" aria-label="Sync progress" aria-valuemin="0" aria-valuemax="${steps.length}" aria-valuenow="${done}"><i style="width:${Math.max(4, done / steps.length * 100)}%"></i></div>
+        <div class="meterrow"><span>Syncing <b>${done} of ${steps.length}</b></span><span>${steps[done] ? "now: " + steps[done] : "finishing"}</span></div>
+        <div class="steps">${steps.map((s, i) => `<span class="${i < done ? "done" : i === done ? "now" : ""}">${s}</span>`).join("")}</div>` : "");
+    },
+  },
+
+  sites: {
+    site: (() => { try { return localStorage.getItem("smsite") || ""; } catch { return ""; } })(),
+    skin(id) { try { return localStorage.getItem("smskin:" + id) || ""; } catch { return ""; } },
+    async render() {
+      const r = await api("sites?page=1&site=" + encodeURIComponent(this.site)).catch(e => (toast(e.message, true), null));
+      if (!r || page !== "sites") return;
+      this.site = r.site;
+      const t = r.task, on = t.exists && t.enabled, busy = r.command.running || !r.ready, here = r.sites.find(s => s.id === r.site);
+      const runs = r.runs.map(x => `<span class="tag ${x.ok ? (x.message.startsWith("WARN") ? "warn" : "ok") : "bad"}" title="${esc(x.message)}">${esc(x.source)}</span>`).join(" ");
+      const choose = r.sites.length > 1 ? `<select id="smsite" aria-label="Website">${r.sites.map(s => `<option value="${esc(s.id)}" ${s.id === r.site ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>` : "";
+      show(`${head("Measure / Websites", "Website monitor", "The websites you look after, one dashboard each: uptime and speed, visits, Google search, form requests and anything that needs you.", `${btn("Open folder", {do: "folder.open", name: "sites"}, "btn quiet")}${r.dashboard ? btn("Open in browser", {do: "sites.open", site: r.site}, "btn quiet") : ""}<button class="btn quiet" data-do="sites.check" ${busy ? "disabled" : ""}>Check now</button><button class="btn go" data-do="sites.sync" ${busy ? "disabled" : ""}>Sync now</button>`)}
+        ${r.ready ? "" : '<p class="small" style="color:var(--warn)">site-monitor is not in the workspace folder.</p>'}
+        <div class="list"><div class="item">${choose}<div class="grow"><div class="t">${esc(here?.name || "No sites yet")} ${here ? `<span class="small muted">${esc(here.url)}</span>` : ""}</div>
+            <div class="s">${r.synced ? `Last run ${esc(r.synced.replace("T", " "))} · ${runs}` : "No check has run yet: press Check now."}</div></div></div>
+          <div class="item"><button class="switch ${on ? "on" : ""}" role="switch" aria-checked="${on}" aria-label="Automatic checks" data-js="smtoggle" data-on="${on ? 0 : 1}" ${t.exists ? "" : "disabled"}></button>
+            <div class="grow"><div class="t">Automatic checks ${on ? "on" : "off"}</div><div class="s">${!t.exists ? "Not set up: the hourly Task Scheduler entry waits for your OK (STATUS.md in the project folder). Check now and Sync now work meanwhile." : on ? "Every hour; the day's first run from 10:00 is the full sync (traffic, Google, PageSpeed, domain)" : "Paused: Task Scheduler skips it until you turn it back on"}</div></div></div></div>
+        <details class="disclosure"><summary>Add a website</summary><div class="bar"><input id="smurl" placeholder="example.com" aria-label="Website address"><input id="smname" placeholder="Name (optional)" aria-label="Site name" maxlength="60"><button class="btn" data-js="smadd">Add</button></div>
+          <p class="small muted">Uptime, speed, HTTPS, the SEO basics and the domain date work for any site right away. Cloudflare traffic, Google search and form requests are a line each in sites.toml.</p></details>
+        <details class="disclosure" ${r.command.running && r.command.title.startsWith("sites") ? "open" : ""}><summary>Console</summary><pre class="box" id="clog">${esc(logText) || "No command has run yet."}</pre></details>
+        ${r.html ? `<iframe id="smdash" name="${esc(this.skin(r.site))}" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" title="Website dashboard" style="width:100%;height:${this.fh || 900}px;border:0;display:block;margin-top:14px"></iframe>` : '<div class="empty"><b>No dashboard yet</b>Press Check now to build it.</div>'}`);
+      // sandboxed with no same-origin, like the Analytics frame: the dashboard's script never sees the token
+      if ($("#smdash")) $("#smdash").srcdoc = r.html;
+      $("#smsite")?.addEventListener("change", e => { this.site = e.target.value; try { localStorage.setItem("smsite", this.site); } catch {} this.render(); });
+    },
+  },
+
+  models: {
+    async render() {
+      show(`${head("Manage / Local AI", "Models", "Choose the model you want to talk to. Agent models can work on code; unrestricted chat models can use public web research when you enable it below.", btn("Unload all", {do: "models.unload"}, "btn quiet"))}<div id="mtable"><p class="muted">Asking Ollama…</p></div>`);
+      // a failed list shows why, never an older list from an earlier visit
+      if (await loadModels().then(() => true, e => { if ($("#mtable")) $("#mtable").innerHTML = `<p class="bad">${esc(e.message)}</p>`; })) this.table();
+    },
+    table() {
+      if (!$("#mtable")) return;
+      if (!cache.models.length) return $("#mtable").innerHTML = '<p class="muted">Ollama answered but lists no models. If it had some before, its models folder may have moved: System → Health says more.</p>';
+      const total = S?.gpu?.total ? S.gpu.total * 2 ** 20 : 8 * 2 ** 30;  // no reading: the README's recommended card
+      $("#mtable").innerHTML = `<table><tr><th>Model</th><th>Size</th><th>Details</th><th>Use</th><th>Now</th><th></th></tr>${cache.models.map(m => `<tr>
+        <td>${esc(m.name)}${m.job ? `<div class="small faint">Agent OS ${esc(m.job)}</div>` : ""}</td>
+        <td class="small">${gb(m.size)} GB${m.size > total * .92 ? ' <span class="tag warn" title="Bigger than VRAM: part runs on the CPU">spills</span>' : ""}</td>
+        <td class="small faint">${esc([m.family, m.params, m.quant].filter(Boolean).join(" · "))}</td>
+        <td><span class="tag ${m.role === "agents" ? "ok" : m.role === "chat only" ? "warn" : ""}">${esc(m.role)}</span></td>
+        <td class="small">${m.vram ? `loaded · ${gb(m.vram)} GB` : '<span class="faint">—</span>'}</td>
+        <td style="text-align:right;white-space:nowrap">${m.vram ? btn("Unload", {do: "model.unload", name: m.name}, "btn quiet") : btn("Load", {do: "model.load", name: m.name}, "btn quiet")}${btn("Talk to it", {js: "usemodel", name: m.name})}</td></tr>`).join("")}</table>`;
+    },
+    live() {
+      const loaded = new Set((S?.loaded || []).map(m => m.name)), had = new Set(cache.models.filter(m => m.vram).map(m => m.name));
+      if ($("#mtable") && [...loaded].sort().join() !== [...had].sort().join()) loadModels().then(() => this.table()).catch(() => {});
+    },
+  },
+
+  apps: {
+    async render() {
+      const mode = await api('assistant-modes').catch(() => ({}));
+      if (page !== "apps") return;  // Ben moved on while it loaded: drawing now would cover the page he opened
+      show(`${head("Manage / Connections", "Apps &amp; APIs", "Connect cloud assistants and manage the tools on this PC.")}
+        <h2>Gemini API</h2><p class="small muted">${mode.gemini ? 'Connection saved. Select Gemini beside the message box to try it.' : 'Connect once, then select Gemini beside the message box.'} Sends conversation text directly to Google, without attachments or Knowledge. Use a Google project with billing disabled for free quota; HyperDesk cannot verify your billing settings.</p>
+        <div class="bar"><input id="geminimodel" aria-label="Gemini model ID" placeholder="Model ID from Google AI Studio (gemini-…)" value="${esc(mode.model || '')}" style="flex:1"><input id="geminikey" type="password" aria-label="Gemini API key" autocomplete="off" placeholder="API key (leave blank to keep saved key)" style="flex:1"><button class="btn" data-js="geminisave">Save connection</button></div>
+        <p class="small muted">Get the key and an available model ID from <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer">Google AI Studio</a>. Saving does not send a test request.</p>
+        <h2>Services on this PC</h2><div id="asvc"></div>
+        <h2>Browsers</h2><div class="bar" id="abr"></div>
+        <h2>API addresses</h2>
+        <table><tr><th>API</th><th>Address</th><th>Speaks</th><th>Key</th><th></th></tr>${[
+          ["Ollama", "http://127.0.0.1:11434/api", "Ollama native", "none"], ["Ollama, OpenAI-style", "http://127.0.0.1:11434/v1", "OpenAI chat completions", "any string"],
+          ["Open WebUI", "http://127.0.0.1:8080/api", "OpenAI-style, RAG, tools", "Settings → Account"], ["ComfyUI", "http://127.0.0.1:8188", "/prompt, /queue, /history", "none"],
+          ["OmniRoute", "http://127.0.0.1:20128/v1", "OpenAI-compatible router", "its dashboard"],
+        ].filter(([n]) => !S?.share || n.startsWith("Ollama") || n in S.services).map(([n, url, kind, key]) => `<tr><td>${n}</td><td class="mono">${url}</td><td class="small faint">${kind}</td><td class="small">${key}</td><td>${btn("Copy", {js: "copytext", text: url}, "btn quiet")}</td></tr>`).join("")}</table>
+        ${S?.share ? "" : '<h2>Cloud</h2><div id="acloud"></div>'}
+        <h2>Free cloud</h2><p class="small muted">Takes what would go to Claude (deep questions, a game running, the cap reached), at no cost.${S?.share ? "" : ' Set up in OmniRoute: add free providers (Gemini AI Studio, Groq, OpenRouter, NVIDIA NIM), make a combo named <span class="mono">free</span>, create an API key and paste it here.'} Free tiers may train on what they get: never attachments or your Knowledge. config.toml <span class="mono">[free]</span>.</p>
+        <div class="bar" id="afree"><input id="freekey" type="password" autocomplete="off" placeholder="API key" style="flex:1;min-width:200px">${btn("Save key", {js: "freekey"})}${btn("Test", {do: "free.test"}, "btn quiet")}</div><p class="small" id="afreest"></p>
+        <p class="small faint">Never connect a Claude or Codex subscription login to OmniRoute or any other gateway: Anthropic's terms do not allow it.</p>`);
+      this.live();
+    },
+    live() {
+      if (!S || !$("#asvc")) return;
+      const extra = {"Open WebUI": "Chat UI with memory and documents", "ComfyUI": "Image engine", "OmniRoute": "API gateway; first login is in omniroute-data\\.env"};
+      put($("#asvc"), `<div class="list"><div class="item"><span class="dot ${S.ollama ? "" : "off"}"></span><div class="grow"><div class="t">Ollama <span class="faint small">${esc(S.ollama || "not answering")}</span></div><div class="s">Model runtime, from its tray app · http://127.0.0.1:11434</div></div></div>
+        ${Object.entries(S.services).map(([n, on]) => `<div class="item"><span class="dot ${on ? "" : "off"}"></span><div class="grow"><div class="t">${esc(n)} <span class="faint small">${on ? "running" : "stopped"}</span></div><div class="s">${extra[n] || ""}</div></div>
+          <div class="acts2" style="opacity:1">${on ? btn("Open", {do: "service.open", name: n}) + btn("Stop", {do: "service.stop", name: n}, "btn quiet") : btn("Start", {do: "service.start", name: n})}</div></div>`).join("")}</div>`);
+      put($("#abr"), Object.entries(S.browsers).filter(([, b]) => b.installed).map(([n, b]) => btn(`<span class="dot ${b.running ? "" : "off"}" style="display:inline-block;margin-right:6px"></span>${esc(n)}`, {do: "browser.open", name: n})).join(""));
+      if (S.free) $("#afreest").textContent = S.free.why ? `Off: ${S.free.why}` : `On: ${S.free.model} at ${S.free.url}`;
+      const keys = health("api-keys");
+      put($("#acloud"), `<div class="list">${[["Claude", health("claude")], ["Codex / ChatGPT", health("codex")], ["Paid API", keys]].map(([n, h]) => `<div class="item"><span class="dot ${h[1] === "PASS" ? "" : "warn"}"></span><div class="grow"><div class="t">${n}</div><div class="s">${esc(n === "Paid API" ? (h[1] === "PASS" ? "Off: no API keys in the environment" : h[2]) : h[2])}</div></div></div>`).join("")}</div>`);
+    },
+  },
+
+  activity: {
+    kind: "all",
+    async render() {
+      show(`${head("Manage / Usage", "Activity", "Usage across Agent OS and your own Claude Code and Codex sessions, and everything that happened.")}
+        <h2>Usage, last 14 days<span class="grow"></span>${btn("Recount", {js: "urefresh"}, "btn quiet")}</h2><div id="ulist"><p class="muted">Counting (ccusage reads the local logs)…</p></div>
+        <h2>Timeline<span class="grow"></span><span class="seg">${["all", "task", "agent", "desk", "update"].map(k => `<button data-js="tkind" data-k="${k}" class="${this.kind === k ? "on" : ""}">${k}</button>`).join("")}</span></h2><div id="tfeed"></div>`);
+      api("timeline").then(rows => { this.rows = rows; this.feed(); }).catch(e => toast(e.message, true));
+      this.usage();
+    },
+    feed() { if ($("#tfeed")) $("#tfeed").innerHTML = `<table>${(this.rows || []).filter(r => this.kind === "all" || r[1] === this.kind).map(([at, kind, text]) => `<tr><td class="small faint" style="white-space:nowrap">${esc(at.slice(5, 16))}</td><td class="small">${esc(kind)}</td><td class="clip" title="${esc(text)}">${esc(text)}</td></tr>`).join("")}</table>`; },
+    src: "all", metric: "tokens",
+    async usage(refresh) {
+      try {
+        this.u = await api("usage" + (refresh ? "?refresh=1" : ""));
+        this.draw();
+      } catch (e) { $("#ulist") && ($("#ulist").innerHTML = `<p class="bad">${esc(e.message)}</p>`); }
+    },
+    draw() {
+      const u = this.u, el = $("#ulist");
+      if (!u || !el) return;
+      const usd = v => v ? "$" + v.toFixed(2) : "", full = n => (n || 0).toLocaleString();
+      const srcs = this.src === "all" ? ["claude", "codex"] : [this.src];
+      const PARTS = [["Output", "var(--accent)"], ["Input", "#7ad7ff"], ["Cache write", "var(--warn)"], ["Cache read", "#666"]];  // server order
+      const rows = u.days.map(([d, x]) => {
+        const p = [0, 0, 0, 0];
+        srcs.forEach(s => (x[s + "_parts"] || []).forEach((v, i) => p[i] += v));
+        return {d, x, p, tok: srcs.reduce((a, s) => a + (x[s] || 0), 0), usd: srcs.reduce((a, s) => a + (x[s + "_usd"] || 0), 0)};
+      });
+      const sum = f => rows.reduce((a, r) => a + f(r), 0);
+      const tot = sum(r => r.tok), out = sum(r => r.p[0]), cr = sum(r => r.p[3]), cost = sum(r => r.usd);
+      const peak = rows.reduce((a, r) => r.tok > a.tok ? r : a, {tok: 0, d: "–"});
+      const val = r => this.metric === "tokens" ? r.tok : this.metric === "output" ? r.p[0] : r.usd;
+      const fmtv = v => this.metric === "cost" ? usd(v) : num(v);
+      const max = Math.max(1e-9, ...rows.map(val));
+      const seg = (k, v, label) => `<button data-js="uset" data-f="${k}" data-v="${v}" class="${this[k] === v ? "on" : ""}">${label}</button>`;
+      const share = (v, of) => `<div class="meter" style="margin:3px 0 0"><i style="width:${of ? Math.max(0.5, 100 * v / of) : 0}%"></i></div>`;
+      const chart = [...rows].reverse().map(r => {
+        const v = val(r);
+        const segs = this.metric === "tokens" ? r.p.map((n, i) => n ? `<i style="flex:${n};background:${PARTS[i][1]}"></i>` : "").join("") : '<i style="flex:1;background:var(--accent2)"></i>';
+        const tip = `${r.d}\n${this.metric === "cost" ? usd(v) || "$0" : full(v) + " tokens"}` + (this.metric === "tokens" ? PARTS.map(([n], i) => `\n${n}: ${full(r.p[i])}`).join("") : "");
+        return `<div class="ucol" title="${esc(tip)}"><b>${v ? fmtv(v) : ""}</b><div class="ustack" style="height:${100 * v / max}%">${segs}</div><span>${esc(r.d.slice(5))}</span></div>`;
+      }).join("");
+      const models = (u.models || []).filter(m => srcs.includes(m[1])), mtot = models.reduce((a, m) => a + m[2], 0);
+      const ptot = u.projects.reduce((a, p) => a + p[1], 0);
+      el.innerHTML = `<div class="bar"><span class="seg">${seg("src", "all", "All")}${seg("src", "claude", "Claude Code")}${seg("src", "codex", "Codex")}</span><span class="grow"></span><span class="seg">${seg("metric", "tokens", "Tokens")}${seg("metric", "output", "Output")}${seg("metric", "cost", "API-rate $")}</span></div>
+        <div class="metricstrip" style="grid-template-columns:repeat(auto-fit, minmax(170px, 1fr))">
+          <div class="metric" title="${full(ptot)} tokens"><span class="name">Claude Code, all time</span><strong>${num(ptot)}</strong><small>${u.projects.length} projects</small></div>
+          <div class="metric" title="${full(tot)} tokens"><span class="name">Tokens, 14 days</span><strong>${num(tot)}</strong><small>peak ${esc(peak.d.slice(5))}: ${num(peak.tok)}</small></div>
+          <div class="metric" title="${full(out)} tokens"><span class="name">Output written</span><strong>${num(out)}</strong><small>${num(out / Math.max(1, rows.length))} per active day</small></div>
+          <div class="metric" title="${full(cr)} tokens"><span class="name">Cache reads</span><strong>${tot ? (100 * cr / tot).toFixed(1) : 0}%</strong><small>${num(cr)} re-read context, billed cheap</small></div>
+          <div class="metric"><span class="name">API-rate est.</span><strong>${usd(cost) || "$0"}</strong><small>usage on subscriptions, not a charge</small></div>
+        </div>
+        <div class="ubars">${chart}</div>
+        ${this.metric === "tokens" ? `<div class="ulegend">${PARTS.map(([n, c]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div>` : ""}
+        <table><tr><th>Day</th><th>Tokens</th><th>Output</th><th>Input</th><th>Cache write</th><th>Cache read</th><th>API-rate est.</th><th title="calls: local / free / cloud">Agent OS calls</th></tr>
+          ${rows.map(r => `<tr><td style="white-space:nowrap">${esc(r.d)}</td><td title="${full(r.tok)}"><b>${r.tok ? num(r.tok) : ""}</b></td>${r.p.map(n => `<td class="small" title="${full(n)}">${n ? num(n) : ""}</td>`).join("")}<td class="faint">${usd(r.usd)}</td><td class="small faint">${r.x.os_local || r.x.os_free || r.x.os_cloud ? [r.x.os_local, r.x.os_free, r.x.os_cloud].map(n => n || 0).join(" / ") : ""}</td></tr>`).join("")}</table>
+        <h2>By model</h2><table><tr><th>Model</th><th>Tool</th><th style="width:34%">Share of tokens</th><th>Tokens</th><th>Output</th><th>API-rate est.</th></tr>${models.map(([n, k, t, o, c]) => `<tr><td class="mono small">${esc(n)}</td><td class="small faint">${k === "claude" ? "Claude Code" : "Codex"}</td><td><span class="small">${mtot ? (100 * t / mtot).toFixed(1) : 0}%</span>${share(t, mtot)}</td><td title="${full(t)}">${num(t)}</td><td class="small" title="${full(o)}">${num(o)}</td><td class="faint">${usd(c) || (k === "codex" ? "in daily total" : "")}</td></tr>`).join("") || '<tr><td colspan="6" class="muted">No model usage in this window.</td></tr>'}</table>
+        <h2>Claude Code by project</h2><table><tr><th>Project</th><th style="width:34%">Share of tokens</th><th>Tokens</th><th>API-rate est.</th><th>Last used</th></tr>${u.projects.map(([n, t, c, last]) => `<tr><td>${esc(n)}</td><td><span class="small">${ptot ? (100 * t / ptot).toFixed(1) : 0}%</span>${share(t, ptot)}</td><td title="${full(t)}">${num(t)}</td><td class="faint">${usd(c)}</td><td class="small">${esc(last)}</td></tr>`).join("")}</table>
+        <p class="small faint">Hover any number for the exact count. Projects cover all Claude Code sessions ever logged, not only the last 14 days.</p>`;
+    },
+  },
+
+  system: {
+    async render() {
+      show(`${head("Manage / This PC", "System", 'Health checks (the same as <span class="mono">agent-os doctor</span>), updates, checks, and what is installed.')}
+        <h2>Health<span class="grow"></span>${btn("Run checks", {do: "health"}, "btn quiet")}</h2><div id="shealth"></div>
+        ${hides("updates") ? "" : `<h2>Updates<span class="grow"></span>${btn("Check", {do: "update_check"}, "btn quiet")}${btn("Update now", {do: "update", confirm: "Update the agent tools to their newest release at least 7 days old? Each one is checked and rolled back if it fails."})}</h2>
+        <p class="small faint" id="ssched"></p><pre class="box" id="supd">…</pre>`}
+        ${hides("improve") ? "" : `<h2>Improve<span class="grow"></span>${btn("Run self-check", {do: "improve"}, "btn quiet")}</h2>
+        <p class="small faint">What failed, was asked again, or cost cloud tokens this week (no model calls; the daily update runs it too). Fix hands one to Agent OS on itself: free and local AI build, test and review it, no paid AI, and it waits for your merge.</p><div id="simp"></div>`}
+        <h2>Console<span class="grow"></span>${S?.share ? "" : btn("Smoke test", {do: "smoke", confirm: "One tiny request to each tier, including Claude and Codex (a sliver of subscription usage). Run it?"}, "btn quiet")}${S?.share ? "" : btn("Local bench", {do: "bench"}, "btn quiet")}</h2>
+        <pre class="box" id="clog">${esc(logText) || "No command has run yet."}</pre>
+        <div id="sman"></div>
+        <h2>Folders</h2><div class="bar">${["workspace", "artifacts", "logs", "AgentOS", "LocalAI", "images"].filter(hasFolder).map(f => btn(f, {do: "folder.open", name: f}, "btn quiet")).join("")}</div>`);
+      this.live();
+      api("system").then(s => {
+        if (!$("#shealth")) return;  // left the page meanwhile
+        if ($("#ssched")) { $("#ssched").textContent = s.schedule; $("#supd").textContent = s.update_log; }
+        const imp = s.improve;
+        if ($("#simp")) $("#simp").innerHTML = !imp.at ? '<p class="muted">Not run yet.</p>' : (imp.found.length ? `<div class="list">${imp.found.map((f, i) => `<div class="item"><div class="grow"><div class="t">${esc(f.what)}</div><div class="s" style="white-space:pre-wrap">${esc(f.evidence)}</div></div>${f.task ? `<div class="acts2" style="opacity:1">${btn("Fix", {do: "improve.fix", i, at: imp.at, confirm: `Hand this to Agent OS? One task on Agent OS itself, built and tested by free and local AI (no paid AI); it ends at your merge.\n\n${f.task}`})}</div>` : ""}</div>`).join("")}</div>` : '<p class="muted">Nothing to improve this week.</p>') + `<p class="small faint">Checked ${esc(imp.at)}</p>`;
+        $("#sman").innerHTML = s.manifest.length ? `<h2>Installed by Agent OS</h2><table><tr><th>Component</th><th>Version</th><th>Since</th><th>Uninstall</th></tr>${s.manifest.map(m => `<tr><td>${esc(m.component)}</td><td class="small">${esc(m.version)}</td><td class="small">${esc(m.date)}</td><td class="mono small faint">${esc(m.uninstall)}</td></tr>`).join("")}</table>` : "";
+      }).catch(e => toast(e.message, true));
+    },
+    live() {
+      if (!S || !$("#shealth")) return;
+      const h = S.health;
+      put($("#shealth"), (h.running ? '<p class="muted">Checking…</p>' : "") + (h.results.length ? `<table><tr><th>Check</th><th>Status</th><th>Detail</th><th>Fix</th></tr>${h.results.map(([n, st, d, f]) => `<tr><td>${esc(n)}</td><td class="${{PASS: "ok", WARN: "warn", FAIL: "bad"}[st] || ""}">${esc(String(st).toLowerCase())}</td><td class="small">${esc(d)}</td><td class="small faint">${esc(f)}</td></tr>`).join("")}</table><p class="small faint">Checked ${esc(h.at)}</p>` : h.running ? "" : '<p class="muted">Not checked yet: press Run checks.</p>'));
+    },
+  },
+};
+
+// one image job at a time from the Images page; its progress lives here so returning to the page shows it
+const imageJob = {running: false, html: ""};
+const showJob = html => { imageJob.html = html; if ($("#ijob")) $("#ijob").innerHTML = html; };
+async function generate() {
+  if (imageJob.running) return;
+  const f = VIEWS.images.form;
+  Object.assign(f, {prompt: $("#iprompt").value.trim(), negative: $("#ineg").value, steps: +$("#isteps").value, cfg: +$("#icfg").value, count: +$("#icount").value, seed: $("#iseed").value.trim(), free: $("#ifree").checked});
+  if (!f.prompt) return toast("Describe the image first.", true);
+  if (!S?.services?.ComfyUI) return toast("ComfyUI is not running. Start it from the status menu, or just ask “draw …” in a conversation (that starts it).", true);
+  imageJob.running = true; if ($("#igo")) $("#igo").disabled = true;
+  const start = Date.now(), secs = () => Math.round((Date.now() - start) / 1000);
+  try {
+    const job = await api("image", {prompt: f.prompt, negative: f.negative, size: f.size, steps: f.steps, cfg: f.cfg, count: f.count, seed: f.seed, free_vram: f.free});
+    for (let missing = 0; ; ) {
+      await sleep(1500);
+      const st = await api("image/status?id=" + job.id);
+      missing = st.state === "starting" ? missing + 1 : 0;
+      if (missing > 20 || secs() > 1800) throw new Error("ComfyUI no longer has this job (cancelled, or ComfyUI restarted).");
+      showJob(`<p class="muted small">${st.done ? "Done" : esc(st.state)} · ${secs()} s · seed ${esc(job.seed)}</p>`);
+      if (!st.done) continue;
+      if (st.error) throw new Error(st.error);
+      showJob(`<p class="muted small">${secs()} s · seed ${esc(job.seed)}</p><div class="imgs">${st.files.map(n => `<img alt="${esc(f.prompt)}" data-js="zoom" data-name="${esc(n)}" src="/api/image/file?name=${encodeURIComponent(n)}&t=${T}">`).join("")}</div>`);
+      if (page === "images") VIEWS.images.gallery();
+      break;
+    }
+  } catch (e) { toast(e.message, true); showJob(""); }
+  imageJob.running = false; if ($("#igo")) $("#igo").disabled = false;
+}
+
+// ---------- tasks: the form (pop-up), inspect
+function taskForm(text = "", repo = "") {
+  const repos = cache.repos;
+  if (!repos.length) return `<p class="muted">No git repo in ${esc(S?.workspace || "the workspace folder")} yet. Put one there (git clone or git init) and come back.</p>`;
+  return `<div class="form"><label for="mtext">What to do</label><textarea id="mtext" rows="3" placeholder="e.g. Fix the expired-session bug in auth.py">${esc(text)}</textarea>
+    <label for="mrepo">Repo</label><select id="mrepo">${repos.map(r => `<option ${r === repo ? "selected" : ""}>${esc(r)}</option>`).join("")}</select>
+    <label for="magent">Agent</label><select id="magent"><option value="">as configured (${esc(S?.implementer || "")} implements)</option><option>opencode</option><option>claude</option><option>codex</option></select>
+    <label for="mlevel">Level</label><select id="mlevel"><option value="">auto</option><option value="0">0 · evidence only, no model</option><option value="1">1 · a local model answers</option><option value="2">2 · one agent changes code</option><option value="3">3 · plan first, then implement</option></select></div>`;
+}
+async function newTask(text = "", repo = "") {
+  if (!cache.tasks) await loadTasks().catch(() => {});
+  modal("New Agent OS task", taskForm(text, repo), cache.repos.length ? `${btn("Cancel", {js: "close"}, "btn quiet")}${btn("Run task", {js: "taskrun"}, "btn go")}` : btn("Close", {js: "close"}));
+  $("#mtext")?.focus();
+}
+async function runTask() {
+  const task = $("#mtext")?.value.trim();
+  if (!task) return toast("Describe the task first.", true);
+  if (await act({do: "run", task, repo: $("#mrepo").value, agent: $("#magent").value, level: $("#mlevel").value})) closeModal();
+}
+function modal(title, body, foot) {
+  $("#mh").textContent = title; $("#mb").innerHTML = body; $("#mf").innerHTML = foot ?? btn("Close", {js: "close"});
+  $("#modal").classList.add("open");
+}
+function closeModal() { stopMic(); $("#modal").classList.remove("open"); }
+async function inspect(id) {
+  modal(`Task ${id}`, '<p class="muted">Reading…</p>');
+  try { $("#mb").innerHTML = `<pre class="box" style="max-height:60vh">${esc((await api("task?id=" + encodeURIComponent(id))).report)}</pre>`; }
+  catch (e) { $("#mb").innerHTML = `<p class="bad">${esc(e.message)}</p>`; }
+}
+
+// ---------- palette (Ctrl+K): conversations, pages, commands
+let palItems = [], palOn = 0;
+function paletteItems(q) {
+  const items = [], add = (label, hint, run) => items.push({label, hint, run});
+  add("New conversation", "", newConversation);
+  Object.entries(TOOLS).filter(([k]) => !hides(k)).forEach(([k, l]) => add(l, "page", () => openPage(k)));
+  if (!hides("analytics") && !S?.share) Object.entries(ATABS).forEach(([k, [l, about]]) => items.push({label: `Analytics: ${l}`, hint: "analytics tab", keys: about,
+    run: () => page === "analytics" && $("#apanel") ? VIEWS.analytics.pick(k) : (VIEWS.analytics.tab = k, openPage("analytics"))}));
+  threadList.forEach(t => add(t.title, "conversation", () => openThread(t.id)));
+  if (!hides("tasks")) add("New Agent OS task…", "tasks", () => newTask());
+  add("Attach files…", "composer", () => pickFiles("files"));
+  add("Attach a folder…", "composer", () => pickFiles("folder"));
+  if (thread && !page) add("Wrap up this conversation", "knowledge", wrapUp);
+  add("Check health", "system", () => act({do: "health"}));
+  if (!hides("updates")) add("Check for updates", "system", () => act({do: "update_check"}));
+  add("Unload all models", "models", () => act({do: "models.unload"}));
+  add("Stop all AI (before gaming)", "system", () => confirm("Kill all AI, HyperDesk included? Nothing restarts until you open it again.") && act({do: "stop_all"}));
+  ["workspace", "artifacts", "logs", "AgentOS", "images"].filter(hasFolder).forEach(f => add(`Open folder ${f}`, "folder", () => act({do: "folder.open", name: f})));
+  Object.keys(S?.services || {}).forEach(n => { add(`Open ${n}`, "service", () => act({do: "service.open", name: n})); add(`Start ${n}`, "service", () => act({do: "service.start", name: n})); add(`Stop ${n}`, "service", () => act({do: "service.stop", name: n})); });
+  if (!hides("projects")) cache.projects.filter(e => e.exists).forEach(e => [["claude", "Claude Code"], ["codex", "Codex"], ["terminal", "Terminal"], ["explorer", "Folder"]].forEach(([t, n]) => add(`${e.name}: open in ${n}`, "project", () => act({do: "project.open", path: e.path, tool: t}))));
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const hits = items.filter(it => words.every(w => (it.label + " " + it.hint + " " + (it.keys || "")).toLowerCase().includes(w)));
+  if (q) hits.unshift({label: `Do it: “${q}”`, hint: "new message", run: () => send(q)});
+  return hits.slice(0, 60);
+}
+function drawPalette() {
+  palItems = paletteItems($("#palq").value.trim());
+  palOn = Math.min(palOn, Math.max(palItems.length - 1, 0));
+  $("#pall").innerHTML = palItems.map((it, i) => `<div class="it ${i === palOn ? "on" : ""}" data-js="palpick" data-i="${i}"><span>${esc(it.label)}</span><span>${esc(it.hint)}</span></div>`).join("");
+  $("#pall .it.on")?.scrollIntoView({block: "nearest"});
+}
+function palette() {
+  if (!cache.projects.length) loadProjects().then(drawPalette).catch(() => {});
+  $("#pal").classList.add("open"); $("#palq").value = ""; palOn = 0; drawPalette(); $("#palq").focus();
+}
+function palPick(i) { const it = palItems[i]; $("#pal").classList.remove("open"); if (it && narrow()) fold(true, false); it?.run(); }
+$("#palq").addEventListener("input", () => { palOn = 0; drawPalette(); });
+$("#palq").addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); palOn = (palOn + (e.key === "ArrowDown" ? 1 : -1) + palItems.length) % Math.max(palItems.length, 1); drawPalette(); }
+  else if (e.key === "Enter") { e.preventDefault(); palPick(palOn); }
+});
+
+// ---------- wiring: every [data-page], [data-do] and [data-js] element
+const narrow = () => matchMedia("(max-width: 820px)").matches;  // the sidebar is an overlay there (CSS, same width)
+function fold(on, remember = true) {
+  const folded = on ?? !document.body.classList.contains("folded");
+  document.body.classList.toggle("folded", folded);
+  $("#unfold").hidden = !folded;
+  if (remember) try { localStorage.setItem("folded", folded ? "1" : ""); } catch {}
+}
+const JS = {
+  startmode: d => { JS.pickwhere({v: d.v, l: {auto: 'Auto', team: 'Local team', gemini: 'Gemini', improve: 'Improve HyperDesk'}[d.v]}); ask.placeholder = d.v === 'improve' ? 'Describe what you want to change in HyperDesk…' : 'What would you like done?'; },
+  geminisave: async () => { if (await act({do: 'gemini.save', model: $('#geminimodel').value, key: $('#geminikey').value})) { $('#geminikey').value = ''; toast('Saved. Choose Gemini in the message box.'); } },
+  fold: () => fold(), new: newConversation, palette, send: () => send(), status: (d, el) => statusMenu(el), wheremenu: (d, el) => whereMenu(el),
+  pickwhere: d => { prefer = d.v; $("#wherelabel").textContent = d.l; ask.placeholder = d.v === 'improve' ? 'Describe what you want to change in HyperDesk…' : 'What would you like done?'; $("#fine").textContent = d.v === 'improve' ? 'Your current version is saved first. Free and local AI build and test the change, with no paid AI; you click Apply update when it is ready.' : 'Choose Auto for everyday requests, Local team for a second opinion, or Improve HyperDesk to change the app.'; closeMenu(); preview(); ask.focus(); },
+  usemodel: d => { prefer = "model:" + d.name; $("#wherelabel").textContent = d.name; newConversation(); },
+  fullscreen: () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(),
+  openthread: d => openThread(d.id),
+  delthread: async d => { if (!confirm("Delete this conversation? Its entries and any files dropped into it go; pictures, repos and your own files stay.")) return; if (await act({do: "thread.delete", id: d.id}, true)) { if (d.id === thread) newConversation(); else loadThreads(); } },
+  example: d => send(d.q), mic: toggleMic, close: closeModal,
+  jobcancel: d => act({do: "job.cancel", id: d.id}, true).then(() => loadThread()),
+  again: d => act({do: "job.again", id: d.id, thread, prefer: d.prefer}, true).then(() => loadThread(true)),
+  copy: d => navigator.clipboard.writeText(jobs.find(j => j.id === d.id)?.output || "").then(() => toast("Copied")),
+  copytext: d => navigator.clipboard.writeText(d.text).then(() => toast("Copied")),
+  inspect: d => inspect(d.id), task: d => newTask("", d.repo), taskrun: runTask,
+  zoom: d => modal(d.name, `<img alt="" style="max-width:100%;border-radius:4px;display:block" src="/api/image/file?name=${encodeURIComponent(d.name)}&t=${T}">`, `${btn("Open folder", {do: "folder.open", name: "images"}, "btn quiet")}${btn("Close", {js: "close"})}`),
+  approve: d => { $("#approve").classList.remove("open"); act({do: "approval", id: d.id, allow: d.allow === "yes"}); },
+  showapproval: () => { shownApproval = ""; renderApproval(); },
+  pfilter: d => { VIEWS.projects.filter = d.f; VIEWS.projects.render(); },
+  prefresh: async () => { await loadProjects(true).catch(e => toast(e.message, true)); VIEWS.projects.list(); },
+  trefresh: () => VIEWS.tasks.render(), irefresh: () => VIEWS.images.gallery(), urefresh: () => { $("#ulist").innerHTML = '<p class="muted">Counting…</p>'; VIEWS.activity.usage(true); },
+  uset: d => { VIEWS.activity[d.f] = d.v; VIEWS.activity.draw(); },
+  tkind: d => { VIEWS.activity.kind = d.k; document.querySelectorAll('[data-js="tkind"]').forEach(b => b.classList.toggle("on", b.dataset.k === d.k)); VIEWS.activity.feed(); },
+  generate, isize: d => { VIEWS.images.form.size = d.k; document.querySelectorAll('[data-js="isize"]').forEach(b => b.classList.toggle("on", b.dataset.k === d.k)); },
+  iview: d => { const g = (VIEWS.images.items || []).find(x => x.name === d.name); if (g) modal(g.name, `<img alt="" style="max-width:100%;border-radius:4px;display:block" src="/api/image/file?name=${encodeURIComponent(g.name)}&t=${T}">${g.prompt ? `<p class="small muted">${esc(g.prompt)}</p>` : ""}`, `${g.prompt ? btn("Use this prompt", {js: "iuse", prompt: g.prompt}, "btn quiet") : ""}${btn("Close", {js: "close"})}`); },
+  iuse: d => { closeModal(); Object.assign(VIEWS.images.form, {prompt: d.prompt, open: true}); VIEWS.images.render(); },
+  palpick: d => palPick(+d.i),
+  vpick: async () => {
+    const r = await api("pick", {kind: "files"}).catch(e => (toast(e.message, true), null));
+    if (r?.refused.length) toast("That file is off limits", true);
+    if (r?.paths[0]) { VIEWS.video.form.path = r.paths[0]; $("#vpath").textContent = r.paths[0]; VIEWS.video.fields(); }
+  },
+  tpick: () => $("#tfile")?.click(),
+  atoggle: async d => { if (await act({do: "analytics.toggle", on: d.on})) VIEWS.analytics.render(); },
+  smtoggle: async d => { if (await act({do: "sites.toggle", on: d.on})) VIEWS.sites.render(); },
+  smadd: async () => {
+    const url = $("#smurl").value.trim();
+    if (!url) return toast("Type a website address first", true);
+    if (await act({do: "sites.add", url, name: $("#smname").value})) VIEWS.sites.render();
+  },
+  atab: d => VIEWS.analytics.pick(d.tab),
+  aframetop: () => VIEWS.analytics.pick("videos", 0),
+  aretry: () => VIEWS.analytics.loadVideos(),
+  awindow: d => { const v = VIEWS.analytics; v.days = +d.days; document.querySelectorAll('[data-js="awindow"]').forEach(b => { b.classList.toggle("on", +b.dataset.days === v.days); b.setAttribute("aria-pressed", String(+b.dataset.days === v.days)); }); v.loadVideos(); },
+  amore: () => { VIEWS.analytics.limit += 25; VIEWS.analytics.drawVideos(); },
+  vset: d => { VIEWS.video.form[d.k] = d.v; document.querySelectorAll(`[data-js="vset"][data-k="${d.k}"]`).forEach(b => { b.classList.toggle("on", b.dataset.v === d.v); b.setAttribute("aria-pressed", String(b.dataset.v === d.v)); }); VIEWS.video.fields(); },
+  vgo: async () => {
+    const f = VIEWS.video.form;
+    f.seconds = +$("#vsec").value || 59; f.fresh = $("#vfresh").checked; f.directions = $("#vdir").value;
+    if (!f.path) return toast("Pick a video first", true);
+    if (await act({do: "video.edit", path: f.path, cut: f.cut, for: f.for, frame: f.frame, directions: f.cut === "clean" ? f.directions : "", seconds: String(f.seconds), fresh: f.fresh})) VIEWS.video.render();
+  },
+  attachmenu: (d, el) => attachMenu(el), pick: d => pickFiles(d.k), pickopen: d => pickOpen(d.tool),
+  unattach: d => { attached = attached.filter(p => p !== d.p); renderAtt(); ask.focus(); },
+  wrapup: () => { wrapUp(); }, wrapsave: saveWrap,  // wrapup: no promise, so a cancelled draft never holds the button
+  knote: d => noteForm(d.kind, d.name), knotesave: saveNote,
+  ksave: async () => {
+    const v = VIEWS.knowledge, t = $("#kctx").value;
+    if (v.saved == null) return toast("Your context did not load. Open Knowledge again before saving.", true);
+    if (await act({do: "knowledge.save", kind: "context", text: t})) v.saved = t;
+  },
+  ktidy: async () => {  // the draft is made from the saved file, so it must not replace unsaved typing
+    const box = $("#kctx"), was = box.value;
+    if (was !== VIEWS.knowledge.saved) return toast("Save first: Tidy shortens the saved context.", true);
+    $("#ktidy").textContent = "fast is drafting a shorter version…";
+    try {
+      const r = await api("tidy", {});
+      if (!box.isConnected) return;  // Ben left the page meanwhile
+      if (box.value !== was) { $("#ktidy").textContent = ""; return toast("You edited while it drafted, so the draft was not put in.", true); }
+      box.value = r.text; $("#ktidy").textContent = `Draft: ${r.before} → ${r.after} characters. Check it, then Save (or leave the page to keep the old one).`;
+    } catch (e) { if ($("#ktidy")) $("#ktidy").textContent = ""; toast(e.message, true); }
+  },
+  freekey: async () => { if (await act({do: "free.key", key: $("#freekey").value})) $("#freekey").value = ""; },
+  kdel: async d => { if (confirm(`Delete ${d.name}?`) && await act({do: "knowledge.delete", kind: d.kind, name: d.name})) VIEWS.knowledge.refresh(); },
+};
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-page], [data-do], [data-js]");
+  if (!el || el.disabled) { if (!e.target.closest("#menu")) closeMenu(); return; }
+  if (el._busy) return;  // its last click is still on its way: a double-click must not ask Claude, run a task or save twice
+  if (!["status", "wheremenu", "attachmenu"].includes(el.dataset.js)) closeMenu();  // every other click closes an open menu
+  if (el.closest("#modal") && el.dataset.page) closeModal();
+  // a narrow window's sidebar lies over the page: going anywhere closes it (not remembered for a wide window)
+  if ((el.dataset.page !== undefined || ["new", "openthread", "palette"].includes(el.dataset.js)) && narrow()) fold(true, false);
+  if (el.dataset.page === "analytics" && el.dataset.tab) VIEWS.analytics.tab = el.dataset.tab;
+  if (el.dataset.page !== undefined) return el.dataset.page in TOOLS && !hides(el.dataset.page) ? openPage(el.dataset.page) : null;  // a digest line can name a page the lite build hides
+  let run;
+  if (el.dataset.js) run = JS[el.dataset.js](el.dataset, el);
+  else { const {confirm: q, ...payload} = el.dataset; if (!q || confirm(q)) run = act(payload); }
+  if (run?.finally) { el._busy = true; run.finally(() => { el._busy = false; }).catch(() => {}); }
+});
+// on the press, not the click: a text selection dragged out of the dialog ends on the backdrop and must not close it
+for (const id of ["#pal", "#modal"]) $(id).addEventListener("mousedown", e => { if (e.target.id === id.slice(1)) $(id).classList.remove("open"); });
+document.addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if (e.ctrlKey && k === "k") { e.preventDefault(); palette(); }
+  else if (e.ctrlKey && e.shiftKey && k === "o") { e.preventDefault(); newConversation(); }
+  else if (e.key === "Escape") { closeMenu(); $("#pal").classList.remove("open"); if ($("#modal").classList.contains("open")) closeModal(); }  // closeModal stops the mic: only for a dialog
+});
+addEventListener("resize", closeMenu);
+addEventListener("message", e => {  // the sandboxed website dashboard: its height, its theme pick (it has no storage of its own), a tab click
+  const f = $("#smdash"), d = e.data;
+  if (!f || e.source !== f.contentWindow || !d || page !== "sites") return;
+  if (Number.isFinite(d.smHeight)) f.style.height = (VIEWS.sites.fh = Math.min(Math.max(d.smHeight, 0) + 8, 20000)) + "px";
+  if (typeof d.smSkin === "string" && /^[a-z]{1,20}$/.test(d.smSkin)) try { localStorage.setItem("smskin:" + VIEWS.sites.site, d.smSkin); } catch {}
+  const s = $("#scroll"), by = s ? f.getBoundingClientRect().top - s.getBoundingClientRect().top : 0;
+  if (d.smTab && by < 0) s.scrollBy(0, by - 8);  // a tab clicked far down the frame: bring its top back into view
+});
+addEventListener("message", e => {  // the sandboxed Analytics dashboard: its height (so the frame needs no scrollbar), a tab to open, a spot to scroll to
+  const f = $("#adash"), d = e.data;
+  if (!f || e.source !== f.contentWindow || !d || page !== "analytics") return;
+  if (Number.isFinite(d.sdaHeight)) f.style.height = (VIEWS.analytics.fh = Math.min(Math.max(d.sdaHeight, 0) + 8, 20000)) + "px";
+  if (typeof d.sdaGo === "string" && Object.hasOwn(ATABS, d.sdaGo)) { VIEWS.analytics.pick(d.sdaGo); $("#atab-" + d.sdaGo)?.focus(); }
+  if (d.sdaKey === "palette") palette();
+  if (Number.isFinite(d.sdaScroll) && !f.hidden) VIEWS.analytics.pick(VIEWS.analytics.tab, Math.max(0, d.sdaScroll));
+});
+
+try { if (localStorage.getItem("folded")) fold(true); } catch {}
+newConversation();
+poll();
+setInterval(poll, 4000);
+</script>
+<script src="/assets/studio.js"></script>
+<script src="/assets/local-access.js"></script>
+</body>
+</html>

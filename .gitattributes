@@ -1,0 +1,9 @@
+# Windows reads these: they stay CRLF in every clone and in GitHub's Download ZIP, whatever git's settings
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.txt text eol=crlf
+*.ico binary
+*.png binary
+*.ttf binary
+*.woff2 binary

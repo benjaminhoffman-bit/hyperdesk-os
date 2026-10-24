@@ -1,0 +1,25 @@
+HyperDesk OS
+Copyright (c) 2026 SilvaDes LLC. All rights reserved.
+
+You may download, install and use HyperDesk OS for free, and you may share the
+unchanged release zip, an unchanged copy of its repository, or a link to either.
+
+You may not:
+- sell HyperDesk OS, or charge for access to it;
+- share changed copies, including copies with the SilvaDes ads removed or
+  changed;
+- use the SilvaDes name or logo, except to refer to this project.
+
+You may change your own installed copy for your own use.
+
+HyperDesk OS is provided "as is", without warranty of any kind. SilvaDes LLC is
+not liable for any damage or loss that comes from using it.
+
+Parts made by others keep their own licenses:
+- The fonts in app/AgentOS/assets/fonts are under the SIL Open Font License 1.1
+  (OFL-Oxanium.txt, OFL-IBM-Plex.txt in that folder).
+- Python, Ollama and the AI model are not part of HyperDesk OS. The installer
+  gets Python and Ollama from their publishers through winget, and the model
+  from the Ollama library. Their own terms apply.
+
+Questions: benjaminhoffman@silvades.com
